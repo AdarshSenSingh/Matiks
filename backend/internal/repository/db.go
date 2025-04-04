@@ -40,6 +40,7 @@ func NewDatabase(cfg *config.Config) (*Database, error) {
 		&models.Friendship{},
 		&models.Puzzle{},
 		&models.PuzzleSolution{},
+		&SolutionMetrics{},
 	)
 	if err != nil {
 		return nil, err

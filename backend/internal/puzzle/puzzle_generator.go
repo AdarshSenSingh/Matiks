@@ -148,11 +148,75 @@ func (g *PuzzleGenerator) scoreSolution(solution string) int {
 
 // CreateExplanation creates a step-by-step explanation of a solution
 func (g *PuzzleGenerator) CreateExplanation(solution string) string {
-	// This is a simplified version; a real implementation would parse the expression
-	// and show the step-by-step evaluation
+	// Initialize explanation
+	explanation := "Step-by-step solution:\n"
 
-	// For now, just show the solution and the result
-	return fmt.Sprintf("Solution: %s = 100", solution)
+	// Find parenthesized expressions and explain them first
+	parenGroups := g.findParenthesizedGroups(solution)
+
+	// If there are parenthesized groups, explain them
+	if len(parenGroups) > 0 {
+		explanation += "Breaking down the expression:\n"
+
+		// Explain each parenthesized group
+		for i, group := range parenGroups {
+			// Evaluate the group
+			result, err := g.evaluator.Evaluate(group)
+			if err == nil {
+				explanation += fmt.Sprintf("  Step %d: Calculate (%s) = %.0f\n", i+1, group, result)
+			}
+		}
+	}
+
+	// Explain the operations used
+	addCount := strings.Count(solution, "+")
+	subCount := strings.Count(solution, "-")
+	mulCount := strings.Count(solution, "*")
+	divCount := strings.Count(solution, "/")
+	parenCount := strings.Count(solution, "(") // Count opening parentheses
+
+	explanation += "\nThis solution uses:"
+	if addCount > 0 {
+		explanation += fmt.Sprintf("\n- Addition (%d times)", addCount)
+	}
+	if subCount > 0 {
+		explanation += fmt.Sprintf("\n- Subtraction (%d times)", subCount)
+	}
+	if mulCount > 0 {
+		explanation += fmt.Sprintf("\n- Multiplication (%d times)", mulCount)
+	}
+	if divCount > 0 {
+		explanation += fmt.Sprintf("\n- Division (%d times)", divCount)
+	}
+	if parenCount > 0 {
+		explanation += fmt.Sprintf("\n- Parentheses (%d groups)", parenCount)
+	}
+
+	// Add the final result
+	explanation += fmt.Sprintf("\n\nFinal expression: %s = 100", solution)
+
+	return explanation
+}
+
+// findParenthesizedGroups finds all parenthesized groups in an expression
+func (g *PuzzleGenerator) findParenthesizedGroups(expression string) []string {
+	groups := []string{}
+	stack := []int{}
+
+	for i, char := range expression {
+		if char == '(' {
+			stack = append(stack, i)
+		} else if char == ')' && len(stack) > 0 {
+			start := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+
+			// Extract the group without the outer parentheses
+			group := expression[start+1:i]
+			groups = append(groups, group)
+		}
+	}
+
+	return groups
 }
 
 // GeneratePuzzleWithDifficulty generates a puzzle with a specific difficulty level

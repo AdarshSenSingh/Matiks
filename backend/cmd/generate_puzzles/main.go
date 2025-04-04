@@ -39,9 +39,10 @@ func main() {
 
 	// Initialize repositories
 	puzzleRepo := repository.NewPuzzleRepository(db.DB)
+	userRepo := repository.NewUserRepository(db.DB)
 
 	// Initialize services
-	puzzleService := puzzle.NewService(puzzleRepo)
+	puzzleService := puzzle.NewService(puzzleRepo, userRepo, db.DB)
 
 	// Clean existing puzzles if requested
 	if *cleanFlag {

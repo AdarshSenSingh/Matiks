@@ -146,6 +146,23 @@ func CreateIndexes(db *gorm.DB) error {
 		return err
 	}
 
+	// Solution metrics indexes
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_solution_metrics_user_id ON solution_metrics (user_id)").Error; err != nil {
+		return err
+	}
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_solution_metrics_puzzle_id ON solution_metrics (puzzle_id)").Error; err != nil {
+		return err
+	}
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_solution_metrics_is_correct ON solution_metrics (is_correct)").Error; err != nil {
+		return err
+	}
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_solution_metrics_created_at ON solution_metrics (created_at)").Error; err != nil {
+		return err
+	}
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_solution_metrics_score ON solution_metrics (score)").Error; err != nil {
+		return err
+	}
+
 	// Composite indexes for common queries
 	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_friendships_user_friend_status ON friendships (user_id, friend_id, status)").Error; err != nil {
 		return err
@@ -160,6 +177,9 @@ func CreateIndexes(db *gorm.DB) error {
 		return err
 	}
 	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_puzzles_min_max_elo ON puzzles (min_elo, max_elo)").Error; err != nil {
+		return err
+	}
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_solution_metrics_user_puzzle ON solution_metrics (user_id, puzzle_id)").Error; err != nil {
 		return err
 	}
 

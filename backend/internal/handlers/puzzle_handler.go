@@ -154,8 +154,18 @@ func (h *PuzzleHandler) ValidateSolution(c *gin.Context) {
 		return
 	}
 
+	// Get user ID from context
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Not authenticated",
+		})
+		return
+	}
+
 	// Validate the solution
-	isCorrect, err := h.puzzleService.ValidateSolution(id, input.Solution)
+	result, err := h.puzzleService.ValidateSolution(id, input.Solution, userID.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -167,7 +177,18 @@ func (h *PuzzleHandler) ValidateSolution(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"is_correct": isCorrect,
+			"is_correct": result.IsCorrect,
+			"steps": result.Steps,
+			"error_message": result.ErrorMessage,
+			"execution_time": result.ExecutionTime,
+			"score": result.Score,
+			"rating_change": result.RatingChange,
+			"metrics": gin.H{
+				"complexity": result.SolutionMetric.Complexity,
+				"operators": result.SolutionMetric.OperatorCount,
+				"parentheses": result.SolutionMetric.ParenthesesCount,
+				"length": result.SolutionMetric.Length,
+			},
 		},
 	})
 }
@@ -186,18 +207,38 @@ func (h *PuzzleHandler) GeneratePuzzle(c *gin.Context) {
 				// Find the optimal solution
 				optimalSolution := generator.FindOptimalSolution(solutions)
 
+				// Calculate complexity score
+				complexityScore := 0.0
+				for _, solution := range solutions {
+					complexityScore += float64(len(solution))
+				}
+				complexityScore /= float64(len(solutions))
+
 				// Create a puzzle object
 				puzzle := &models.Puzzle{
 					Sequence:        sequence,
 					Difficulty:      models.DifficultyLevel(difficulty),
+					ComplexityScore: complexityScore,
 					SolutionCount:   len(solutions),
 					OptimalSolution: optimalSolution,
 					Explanation:     generator.CreateExplanation(optimalSolution),
+					MinELO:          (difficulty-1)*500,
+					MaxELO:          difficulty*500,
 				}
 
 				// Save the puzzle
 				err = h.puzzleRepo.Create(puzzle)
 				if err == nil {
+					// Save the solutions
+					for _, solution := range solutions {
+						solutionObj := &models.PuzzleSolution{
+							PuzzleID:   puzzle.ID,
+							Expression: solution,
+							Complexity: float64(len(solution)),
+							IsOptimal:  solution == optimalSolution,
+						}
+						_ = h.puzzleRepo.CreateSolution(solutionObj)
+					}
 					c.JSON(http.StatusOK, gin.H{
 						"success": true,
 						"data":    puzzle.ToResponse(false),
@@ -222,6 +263,50 @@ func (h *PuzzleHandler) GeneratePuzzle(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    puzzle.ToResponse(false),
+	})
+}
+
+// GetPuzzlesByELO gets puzzles suitable for a specific ELO rating
+func (h *PuzzleHandler) GetPuzzlesByELO(c *gin.Context) {
+	// Parse ELO parameter
+	eloStr := c.Param("elo")
+	elo, err := strconv.Atoi(eloStr)
+	if err != nil || elo < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Invalid ELO rating",
+		})
+		return
+	}
+
+	// Parse pagination parameters
+	limit, offset := getPaginationParams(c)
+
+	// Get puzzles
+	puzzles, err := h.puzzleService.GetPuzzlesByELORange(elo, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to get puzzles",
+		})
+		return
+	}
+
+	// Convert to response format
+	response := make([]models.PuzzleResponse, len(puzzles))
+	for i, p := range puzzles {
+		response[i] = p.ToResponse(false)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    response,
+		"meta": gin.H{
+			"elo":    elo,
+			"count":  len(puzzles),
+			"limit":  limit,
+			"offset": offset,
+		},
 	})
 }
 

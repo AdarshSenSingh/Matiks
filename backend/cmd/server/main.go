@@ -5,12 +5,17 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/hectoclash/internal/config"
+	"github.com/hectoclash/internal/game"
 	"github.com/hectoclash/internal/handlers"
+	"github.com/hectoclash/internal/matchmaking"
 	"github.com/hectoclash/internal/middleware"
+	"github.com/hectoclash/internal/puzzle"
 	"github.com/hectoclash/internal/repository"
 	"github.com/hectoclash/internal/routes"
 	"github.com/hectoclash/internal/services"
+	"github.com/hectoclash/internal/websocket"
 )
 
 func main() {
@@ -36,20 +41,54 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
+	// Initialize Redis client
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     cfg.Redis.URL,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	})
+
+	// Initialize WebSocket hub
+	wsHub := websocket.NewHub()
+	go wsHub.Run()
+
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db.DB)
+	gameRepo := repository.NewGameRepository(db.DB)
+	puzzleRepo := repository.NewPuzzleRepository(db.DB)
+	// Initialize solution metrics repository for future use
+	_ = repository.NewSolutionMetricsRepository(db.DB)
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo, cfg)
+	puzzleService := puzzle.NewService(puzzleRepo, userRepo, db.DB)
+
+	// Initialize event service
+	eventService := game.NewEventService(wsHub)
+
+	// Initialize game service
+	gameService := game.NewService(gameRepo, userRepo, puzzleService, eventService)
+
+	// Initialize matchmaking service
+	matchmakingService := matchmaking.NewService(redisClient, userRepo, gameService)
+	go matchmakingService.Start()
 
 	// Initialize middlewares
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService, cfg)
+	gameHandler := handlers.NewGameHandler(gameService)
+	puzzleHandler := handlers.NewPuzzleHandler(puzzleService, puzzleRepo, userRepo)
+	wsHandler := websocket.NewHandler(wsHub)
+	matchmakingHandler := handlers.NewMatchmakingHandler(matchmakingService)
 
 	// Setup routes
 	routes.SetupAuthRoutes(router, authHandler, authMiddleware)
+	routes.SetupGameRoutes(router, gameHandler, authMiddleware)
+	routes.SetupPuzzleRoutes(router, puzzleHandler, authMiddleware)
+	routes.SetupMatchmakingRoutes(router, matchmakingHandler, authMiddleware)
+	routes.RegisterWebSocketRoutes(router, wsHandler, authMiddleware)
 
 	// Health check route
 	router.GET("/api/health", func(c *gin.Context) {

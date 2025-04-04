@@ -17,6 +17,7 @@ type Config struct {
 	Database DatabaseConfig
 	JWT      JWTConfig
 	CORS     CORSConfig
+	Redis    RedisConfig
 }
 
 // ServerConfig holds all server related configuration
@@ -49,6 +50,13 @@ type CORSConfig struct {
 	AllowedOrigins []string
 }
 
+// RedisConfig holds all Redis related configuration
+type RedisConfig struct {
+	URL      string
+	Password string
+	DB       int
+}
+
 // Load loads the configuration from environment variables
 func Load() *Config {
 	// Load .env file if it exists
@@ -78,6 +86,11 @@ func Load() *Config {
 		},
 		CORS: CORSConfig{
 			AllowedOrigins: strings.Split(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:5173"), ","),
+		},
+		Redis: RedisConfig{
+			URL:      getEnv("REDIS_URL", "localhost:6379"),
+			Password: getEnv("REDIS_PASSWORD", ""),
+			DB:       getEnvAsInt("REDIS_DB", 0),
 		},
 	}
 

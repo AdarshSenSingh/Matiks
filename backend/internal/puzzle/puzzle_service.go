@@ -4,28 +4,40 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/hectoclash/internal/models"
 	"github.com/hectoclash/internal/repository"
+	"gorm.io/gorm"
 )
 
 // Service provides puzzle functionality
 type Service struct {
-	puzzleRepo *repository.PuzzleRepository
-	cache      *PuzzleCache
+	puzzleRepo           *repository.PuzzleRepository
+	userRepo             *repository.UserRepository
+	cache                *PuzzleCache
+	solutionValidator     *SolutionValidator
+	solutionMetricsRepo  *repository.SolutionMetricsRepository
 }
 
 // NewService creates a new puzzle service
-func NewService(puzzleRepo *repository.PuzzleRepository) *Service {
+func NewService(puzzleRepo *repository.PuzzleRepository, userRepo *repository.UserRepository, db *gorm.DB) *Service {
 	// Create a cache with 1000 puzzles max and 24-hour expiration
 	cache := NewPuzzleCache(1000, 24*time.Hour)
 
+	// Create a solution validator
+	solutionValidator := NewSolutionValidator()
+
+	// Create a solution metrics repository
+	solutionMetricsRepo := repository.NewSolutionMetricsRepository(db)
+
 	return &Service{
-		puzzleRepo: puzzleRepo,
-		cache:      cache,
+		puzzleRepo:          puzzleRepo,
+		userRepo:            userRepo,
+		cache:               cache,
+		solutionValidator:    solutionValidator,
+		solutionMetricsRepo: solutionMetricsRepo,
 	}
 }
 
@@ -147,42 +159,103 @@ func (s *Service) GetPuzzleForUser(userELO int) (*models.Puzzle, error) {
 }
 
 // ValidateSolution validates a solution for a puzzle
-func (s *Service) ValidateSolution(puzzleID, solution string) (bool, error) {
+func (s *Service) ValidateSolution(puzzleID, solution string, userID string) (*ValidationResult, error) {
 	// Get the puzzle (using cache if available)
 	puzzle, err := s.GetPuzzle(puzzleID)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	// Clean the solution
-	solution = s.cleanSolution(solution)
-
-	// Check if the solution uses all digits in the correct order
-	if !s.usesAllDigitsInOrder(puzzle.Sequence, solution) {
-		return false, nil
-	}
-
-	// Evaluate the solution
-	result, err := s.evaluateExpression(solution)
+	// Get user's rating
+	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	// Check if the result equals 100
-	isCorrect := result == 100
+	// Validate the solution
+	validationResult := s.solutionValidator.ValidateSolution(puzzle, solution, user.Rating)
 
-	// If the solution is correct, update puzzle stats in the background
-	if isCorrect {
+	// If the solution is correct, update stats in the background
+	if validationResult.IsCorrect {
 		go func() {
-			// Calculate solve time (this is just an estimate since we don't track when the user started)
-			solveTime := 30.0 // Default to 30 seconds if we don't have actual timing
-
 			// Update puzzle stats
-			_ = s.puzzleRepo.UpdatePuzzleStats(puzzleID, solveTime, true)
+			_ = s.puzzleRepo.UpdatePuzzleStats(puzzleID, validationResult.SolutionMetric.ExecutionTime/1000.0, true)
+
+			// Update user stats
+			_ = s.updateUserStats(userID, validationResult)
+
+			// Store solution metrics
+			_ = s.storeSolutionMetrics(puzzleID, userID, solution, validationResult)
+		}()
+	} else {
+		// Even if the solution is incorrect, store the metrics for analysis
+		go func() {
+			_ = s.storeSolutionMetrics(puzzleID, userID, solution, validationResult)
 		}()
 	}
 
-	return isCorrect, nil
+	return &validationResult, nil
+}
+
+// Helper function to update user stats after a successful solution
+func (s *Service) updateUserStats(userID string, result ValidationResult) error {
+	// Get user stats
+	stats, err := s.userRepo.GetUserStats(userID)
+	if err != nil {
+		return err
+	}
+
+	// Update stats
+	stats.GamesPlayed++
+	stats.GamesWon++
+
+	// Update rating
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return err
+	}
+	user.Rating += result.RatingChange
+	stats.Rating = user.Rating
+
+	// Update streak
+	now := time.Now()
+	stats.UpdateStreak(now)
+
+	// Update average solve time
+	solveTime := result.SolutionMetric.ExecutionTime / 1000.0 // Convert to seconds
+	if stats.AvgSolveTime == 0 {
+		stats.AvgSolveTime = solveTime
+	} else {
+		stats.AvgSolveTime = (stats.AvgSolveTime*float64(stats.GamesPlayed-1) + solveTime) / float64(stats.GamesPlayed)
+	}
+
+	// Save user and stats
+	err = s.userRepo.Update(user)
+	if err != nil {
+		return err
+	}
+
+	return s.userRepo.UpdateUserStats(stats)
+}
+
+// Helper function to store solution metrics
+func (s *Service) storeSolutionMetrics(puzzleID, userID, solution string, result ValidationResult) error {
+	// Create solution metrics
+	metrics := &repository.SolutionMetrics{
+		UserID:           userID,
+		PuzzleID:         puzzleID,
+		Solution:         solution,
+		IsCorrect:        result.IsCorrect,
+		ExecutionTime:    result.SolutionMetric.ExecutionTime,
+		Complexity:       result.SolutionMetric.Complexity,
+		OperatorCount:    result.SolutionMetric.OperatorCount,
+		ParenthesesCount: result.SolutionMetric.ParenthesesCount,
+		Score:            result.Score,
+		RatingChange:     result.RatingChange,
+	}
+
+	// Save the metrics
+	return s.solutionMetricsRepo.Create(metrics)
 }
 
 // GetPuzzlesByDifficulty gets puzzles by difficulty level
@@ -308,7 +381,9 @@ func (s *Service) generateSolutions(sequence string) ([]string, error) {
 	// Filter solutions that equal 100
 	validSolutions := []string{}
 	for _, solution := range allSolutions {
-		result, err := s.evaluateExpression(solution)
+		// Use the expression evaluator directly
+		evaluator := NewExpressionEvaluator()
+		result, err := evaluator.Evaluate(solution)
 		if err == nil && result == 100 {
 			validSolutions = append(validSolutions, solution)
 		}
@@ -330,7 +405,9 @@ func (s *Service) generateSolutions(sequence string) ([]string, error) {
 
 		// Check each pattern
 		for _, pattern := range commonPatterns {
-			result, err := s.evaluateExpression(pattern)
+			// Use the expression evaluator directly
+			evaluator := NewExpressionEvaluator()
+			result, err := evaluator.Evaluate(pattern)
 			if err == nil && result == 100 {
 				validSolutions = append(validSolutions, pattern)
 			}
@@ -492,7 +569,8 @@ func (s *Service) explainSolution(solution string, _ []Token) string {
 		// Explain each parenthesized group
 		for i, group := range groups {
 			// Evaluate the group
-			result, err := s.evaluateExpression(group)
+			evaluator := NewExpressionEvaluator()
+			result, err := evaluator.Evaluate(group)
 			if err == nil {
 				explanation += fmt.Sprintf("  Step %d: Calculate (%s) = %.0f\n", i+1, group, result)
 			}
@@ -586,68 +664,11 @@ func (s *Service) calculateMaxELO(difficulty models.DifficultyLevel) int {
 	}
 }
 
-// Helper function to clean a solution string
-func (s *Service) cleanSolution(solution string) string {
-	// Remove all whitespace
-	solution = strings.ReplaceAll(solution, " ", "")
+// These methods are now handled by the SolutionValidator
 
-	// Replace × with * and ÷ with /
-	solution = strings.ReplaceAll(solution, "×", "*")
-	solution = strings.ReplaceAll(solution, "÷", "/")
+// This method is now handled by the SolutionValidator
 
-	return solution
-}
-
-// Helper function to check if a solution uses all digits in the correct order
-func (s *Service) usesAllDigitsInOrder(sequence, solution string) bool {
-	// Remove all non-digit characters from the solution
-	re := regexp.MustCompile("[^0-9]")
-	digits := re.ReplaceAllString(solution, "")
-
-	// Check if the digits match the sequence
-	return digits == sequence
-}
-
-// Helper function to evaluate a mathematical expression
-func (s *Service) evaluateExpression(expression string) (float64, error) {
-	// Use our expression evaluator to properly evaluate the expression
-	evaluator := NewExpressionEvaluator()
-	return evaluator.Evaluate(expression)
-}
-
-// ELO rating calculation functions
-
-// CalculateELOChange calculates the change in ELO rating after a game
-func (s *Service) CalculateELOChange(playerRating, puzzleDifficulty int, isCorrect bool, solveTime float64) int {
-	// Constants for ELO calculation
-	k := 32 // K-factor, determines the maximum possible adjustment
-
-	// Calculate expected score based on ratings
-	expectedScore := 1 / (1 + math.Pow(10, float64(puzzleDifficulty-playerRating)/400))
-
-	// Actual score (1 for win, 0 for loss)
-	actualScore := 0.0
-	if isCorrect {
-		actualScore = 1.0
-
-		// Adjust score based on solve time (faster solve = higher score)
-		// This is a simplified version. You can adjust the formula based on your requirements.
-		timeBonus := math.Max(0, 1 - (solveTime / 300)) // 300 seconds (5 minutes) as reference
-		actualScore += timeBonus * 0.5 // Maximum 50% bonus for very fast solves
-	}
-
-	// Calculate ELO change
-	eloChange := int(math.Round(float64(k) * (actualScore - expectedScore)))
-
-	// Limit the maximum change
-	if eloChange > 50 {
-		eloChange = 50
-	} else if eloChange < -50 {
-		eloChange = -50
-	}
-
-	return eloChange
-}
+// ELO rating calculation is now handled by the SolutionValidator
 
 // GetPuzzleDifficultyRating converts a difficulty level to an ELO-equivalent rating
 func (s *Service) GetPuzzleDifficultyRating(difficulty models.DifficultyLevel) int {
@@ -669,12 +690,12 @@ func (s *Service) GetPuzzleDifficultyRating(difficulty models.DifficultyLevel) i
 
 // GetUserELO gets a user's ELO rating from the repository
 func (s *Service) GetUserELO(userID string) (int, error) {
-	// This would typically involve a call to the user repository
-	// For now, we'll use a placeholder implementation
+	// Get the user from the repository
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return 1000, err // Return default rating if user not found
+	}
 
-	// In a real implementation, you would inject the user repository and call it
-	// For example: return s.userRepo.GetUserRating(userID)
-
-	// For now, return a default rating
-	return 1000, nil
+	// Return the user's rating
+	return user.Rating, nil
 }

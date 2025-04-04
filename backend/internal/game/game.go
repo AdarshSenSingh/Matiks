@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"math"
 	"time"
 
 	"github.com/hectoclash/internal/models"
@@ -11,17 +12,19 @@ import (
 
 // Service provides game functionality
 type Service struct {
-	gameRepo   *repository.GameRepository
-	userRepo   *repository.UserRepository
+	gameRepo     *repository.GameRepository
+	userRepo     *repository.UserRepository
 	puzzleService *puzzle.Service
+	eventService  *EventService
 }
 
 // NewService creates a new game service
-func NewService(gameRepo *repository.GameRepository, userRepo *repository.UserRepository, puzzleService *puzzle.Service) *Service {
+func NewService(gameRepo *repository.GameRepository, userRepo *repository.UserRepository, puzzleService *puzzle.Service, eventService *EventService) *Service {
 	return &Service{
-		gameRepo:   gameRepo,
-		userRepo:   userRepo,
+		gameRepo:     gameRepo,
+		userRepo:     userRepo,
 		puzzleService: puzzleService,
+		eventService:  eventService,
 	}
 }
 
@@ -65,6 +68,17 @@ func (s *Service) CreateGame(creatorID string, gameType string) (*models.Game, e
 		return nil, err
 	}
 
+	// Reload the game with player information
+	game, err = s.gameRepo.FindByID(game.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Notify clients that a game has been created
+	if s.eventService != nil {
+		go s.eventService.NotifyGameCreated(game)
+	}
+
 	return game, nil
 }
 
@@ -100,6 +114,23 @@ func (s *Service) JoinGame(gameID, userID string) error {
 		return err
 	}
 
+	// Reload the player with user information
+	player, err = s.gameRepo.FindPlayerByGameAndUser(gameID, userID)
+	if err != nil {
+		return err
+	}
+
+	// Notify clients that a player has joined
+	if s.eventService != nil {
+		// Reload the game with updated player information
+		game, err = s.gameRepo.FindByID(gameID)
+		if err != nil {
+			return err
+		}
+
+		go s.eventService.NotifyPlayerJoined(game, player)
+	}
+
 	// If game has enough players (2 for duel), change status to active
 	if len(game.Players) + 1 >= 2 && game.GameType == "duel" {
 		game.Status = models.GameStatusActive
@@ -110,6 +141,17 @@ func (s *Service) JoinGame(gameID, userID string) error {
 		err = s.gameRepo.Update(game)
 		if err != nil {
 			return err
+		}
+
+		// Notify clients that the game has started
+		if s.eventService != nil {
+			// Reload the game with updated information
+			game, err = s.gameRepo.FindByID(gameID)
+			if err != nil {
+				return err
+			}
+
+			go s.eventService.NotifyGameStarted(game)
 		}
 	}
 
@@ -136,7 +178,7 @@ func (s *Service) SubmitSolution(gameID, userID, solution string) error {
 	}
 
 	// Validate solution
-	isCorrect, err := s.puzzleService.ValidateSolution(game.ID, solution)
+	validationResult, err := s.puzzleService.ValidateSolution(game.ID, solution, userID)
 	if err != nil {
 		return err
 	}
@@ -150,38 +192,47 @@ func (s *Service) SubmitSolution(gameID, userID, solution string) error {
 	// Update player's solution
 	player.SolutionSubmitted = &solution
 	player.SolutionTime = &solveTime
+	isCorrect := validationResult.IsCorrect
 	player.IsCorrect = &isCorrect
 	player.Attempts++
+
+	// Calculate progress (0-100%)
+	progress := float64(0)
+	if isCorrect {
+		progress = 1.0 // 100%
+	} else {
+		// Calculate progress based on attempts (more attempts = more progress)
+		progress = math.Min(0.8, float64(player.Attempts) * 0.1) // Max 80% for incorrect solutions
+	}
+
+	// Notify clients about the player's progress
+	if s.eventService != nil {
+		go s.eventService.NotifyPlayerProgress(gameID, userID, progress)
+	}
 
 	// If solution is correct, mark player as finished
 	if isCorrect {
 		now := time.Now()
 		player.FinishedAt = &now
 
-		// Calculate score and rating change
+		// Use the score and rating change from the validation result
+		score := validationResult.Score
+		player.Score = &score
+		ratingChange := validationResult.RatingChange
+		player.RatingChange = &ratingChange
+
+		// Notify clients that a solution has been submitted
+		if s.eventService != nil {
+			go s.eventService.NotifySolutionSubmitted(gameID, userID, solution, isCorrect, score)
+		}
+
+		// Update user's rating
 		user, err := s.userRepo.FindByID(userID)
 		if err != nil {
 			return err
 		}
 
-		// Calculate ELO change
-		eloChange := s.puzzleService.CalculateELOChange(
-			user.Rating,
-			s.puzzleService.GetPuzzleDifficultyRating(models.DifficultyLevel(game.Difficulty)),
-			isCorrect,
-			solveTime,
-		)
-
-		// Update player's score and rating change
-		score := int(100 - solveTime/10)
-		if score < 10 {
-			score = 10
-		}
-		player.Score = &score
-		player.RatingChange = &eloChange
-
-		// Update user's rating
-		user.Rating += eloChange
+		user.Rating += ratingChange
 		err = s.userRepo.Update(user)
 		if err != nil {
 			return err
@@ -212,11 +263,7 @@ func (s *Service) SubmitSolution(gameID, userID, solution string) error {
 			return err
 		}
 
-		// Update puzzle stats
-		err = s.puzzleService.UpdatePuzzleStats(game.ID, solveTime, isCorrect)
-		if err != nil {
-			return err
-		}
+		// Puzzle stats are already updated by the validation service
 
 		// Check if all players have finished
 		allFinished := true
@@ -253,6 +300,17 @@ func (s *Service) SubmitSolution(gameID, userID, solution string) error {
 			err = s.gameRepo.Update(game)
 			if err != nil {
 				return err
+			}
+
+			// Notify clients that the game has ended
+			if s.eventService != nil {
+				// Reload the game with updated information
+				game, err = s.gameRepo.FindByID(gameID)
+				if err != nil {
+					return err
+				}
+
+				go s.eventService.NotifyGameEnded(game)
 			}
 		}
 	}
