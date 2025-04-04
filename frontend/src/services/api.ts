@@ -1,12 +1,12 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
 
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   withCredentials: true, // Important for HTTP-only cookies
 });
@@ -19,16 +19,22 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    
+
     // Don't attempt to refresh if we're already on login-related endpoints
-    const isAuthEndpoint = originalRequest.url.includes('/auth/');
-    const isLoginPage = window.location.pathname === '/login';
-    
+    const isAuthEndpoint = originalRequest.url.includes("/auth/");
+    const isLoginPage = window.location.pathname === "/login";
+
     // Only attempt to refresh token once and only for 401 errors
-    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshing && !isLoginPage && !isAuthEndpoint) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isRefreshing &&
+      !isLoginPage &&
+      !isAuthEndpoint
+    ) {
       originalRequest._retry = true;
       isRefreshing = true;
-      
+
       try {
         await authAPI.refreshToken();
         isRefreshing = false;
@@ -37,65 +43,60 @@ api.interceptors.response.use(
         isRefreshing = false;
         // Only redirect if we're not already on login page
         if (!isLoginPage) {
-          window.location.href = '/login';
+          window.location.href = "/login";
         }
         return Promise.reject(refreshError);
       }
     }
-    
+
     return Promise.reject(error);
   }
 );
 
 // Auth API
 export const authAPI = {
-  register: (username: string, email: string, password: string) => 
-    api.post('/auth/register', { username, email, password }),
-  
-  login: (email: string, password: string) => 
-    api.post('/auth/login', { email, password }),
-  
-  logout: () => 
-    api.post('/auth/logout'),
-  
-  getProfile: () => 
-    api.get('/auth/me'),
+  register: (username: string, email: string, password: string) =>
+    api.post("/auth/register", { username, email, password }),
+
+  login: (email: string, password: string) =>
+    api.post("/auth/login", { email, password }),
+
+  logout: () => api.post("/auth/logout"),
+
+  getProfile: () => api.get("/auth/me"),
 };
 
 // Game API
 export const gameAPI = {
-  createGame: () => 
-    api.post('/games/create'),
-  
-  joinGame: (gameId: string) => 
-    api.post(`/games/${gameId}/join`),
-  
-  submitSolution: (gameId: string, solution: string) => 
-    api.post(`/games/${gameId}/submit-solution`, { solution }),
-  
-  getActiveGames: () => 
-    api.get('/games/active'),
-  
-  getGameById: (gameId: string) => 
-    api.get(`/games/${gameId}`),
+  createGame: (gameType: string) => api.post("/games", { game_type: gameType }),
+
+  joinGame: (gameId: string) => api.post(`/games/${gameId}/join`),
+
+  submitSolution: (gameId: string, solution: string) =>
+    api.post(`/games/${gameId}/submit`, { solution }),
+
+  getActiveGames: () => api.get("/games/active"),
+
+  getGameById: (gameId: string) => api.get(`/games/${gameId}`),
+
+  getDuelStatus: (gameId: string) => api.get(`/games/${gameId}/duel`),
 };
 
 // Matchmaking API
 export const matchmakingAPI = {
-  joinQueue: () => 
-    api.post('/matchmaking/queue'),
-  
-  leaveQueue: () => 
-    api.delete('/matchmaking/queue'),
+  joinQueue: (gameType: string, isRanked: boolean = true) =>
+    api.post("/matchmaking/queue", { game_type: gameType, ranked: isRanked }),
+
+  leaveQueue: () => api.delete("/matchmaking/queue"),
+
+  getQueueStatus: () => api.get("/matchmaking/queue/status"),
 };
 
 // Leaderboard API
 export const leaderboardAPI = {
-  getLeaderboard: () => 
-    api.get('/leaderboard'),
-  
-  getUserStats: (userId: string) => 
-    api.get(`/leaderboard/user/${userId}`),
+  getLeaderboard: () => api.get("/leaderboard"),
+
+  getUserStats: (userId: string) => api.get(`/leaderboard/user/${userId}`),
 };
 
 export default api;

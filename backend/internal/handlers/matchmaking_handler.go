@@ -34,6 +34,7 @@ func (h *MatchmakingHandler) JoinQueue(c *gin.Context) {
 	// Parse game type from request
 	var input struct {
 		GameType string `json:"game_type" binding:"required"`
+		Ranked   bool   `json:"ranked"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -44,7 +45,7 @@ func (h *MatchmakingHandler) JoinQueue(c *gin.Context) {
 	}
 
 	// Join queue
-	err := h.matchmakingService.JoinQueue(userID.(string), input.GameType)
+	err := h.matchmakingService.JoinQueue(userID.(string), input.GameType, input.Ranked)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -100,7 +101,7 @@ func (h *MatchmakingHandler) GetQueueStatus(c *gin.Context) {
 	}
 
 	// Get queue status
-	inQueue, waitTime, err := h.matchmakingService.GetQueueStatus(userID.(string))
+	inQueue, waitTime, gameID, err := h.matchmakingService.GetQueueStatus(userID.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -114,6 +115,7 @@ func (h *MatchmakingHandler) GetQueueStatus(c *gin.Context) {
 		"data": gin.H{
 			"in_queue":  inQueue,
 			"wait_time": waitTime.Seconds(),
+			"game_id":   gameID,
 		},
 	})
 }

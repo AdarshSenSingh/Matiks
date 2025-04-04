@@ -104,6 +104,7 @@ type PlayerResponse struct {
 	Attempts          int        `json:"attempts"`
 	JoinedAt          time.Time  `json:"joined_at"`
 	FinishedAt        *time.Time `json:"finished_at,omitempty"`
+	Progress          *float64   `json:"progress,omitempty"`
 }
 
 // ToResponse converts a Game to a GameResponse

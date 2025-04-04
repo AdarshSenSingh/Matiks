@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"log"
 	"math"
 	"time"
 
@@ -16,16 +17,22 @@ type Service struct {
 	userRepo     *repository.UserRepository
 	puzzleService *puzzle.Service
 	eventService  *EventService
+	duelService   *DuelService
 }
 
 // NewService creates a new game service
 func NewService(gameRepo *repository.GameRepository, userRepo *repository.UserRepository, puzzleService *puzzle.Service, eventService *EventService) *Service {
-	return &Service{
+	service := &Service{
 		gameRepo:     gameRepo,
 		userRepo:     userRepo,
 		puzzleService: puzzleService,
 		eventService:  eventService,
 	}
+
+	// Initialize duel service
+	service.duelService = NewDuelService(gameRepo, userRepo, eventService)
+
+	return service
 }
 
 // CreateGame creates a new game
@@ -77,6 +84,14 @@ func (s *Service) CreateGame(creatorID string, gameType string) (*models.Game, e
 	// Notify clients that a game has been created
 	if s.eventService != nil {
 		go s.eventService.NotifyGameCreated(game)
+	}
+
+	// Create duel room if game type is duel
+	if game.GameType == "duel" {
+		_, err = s.duelService.CreateDuelRoom(game)
+		if err != nil {
+			log.Printf("Error creating duel room: %v", err)
+		}
 	}
 
 	return game, nil
@@ -131,27 +146,42 @@ func (s *Service) JoinGame(gameID, userID string) error {
 		go s.eventService.NotifyPlayerJoined(game, player)
 	}
 
+	// Join duel room if game type is duel
+	if game.GameType == "duel" {
+		err = s.duelService.JoinDuelRoom(gameID, userID)
+		if err != nil {
+			log.Printf("Error joining duel room: %v", err)
+		}
+	}
+
 	// If game has enough players (2 for duel), change status to active
 	if len(game.Players) + 1 >= 2 && game.GameType == "duel" {
-		game.Status = models.GameStatusActive
-		now := time.Now()
-		game.StartedAt = &now
-
-		// Update game in database
-		err = s.gameRepo.Update(game)
+		// Start the duel using the duel service
+		err = s.duelService.StartDuel(gameID)
 		if err != nil {
-			return err
-		}
+			log.Printf("Error starting duel: %v", err)
 
-		// Notify clients that the game has started
-		if s.eventService != nil {
-			// Reload the game with updated information
-			game, err = s.gameRepo.FindByID(gameID)
+			// Fallback to manual start if duel service fails
+			game.Status = models.GameStatusActive
+			now := time.Now()
+			game.StartedAt = &now
+
+			// Update game in database
+			err = s.gameRepo.Update(game)
 			if err != nil {
 				return err
 			}
 
-			go s.eventService.NotifyGameStarted(game)
+			// Notify clients that the game has started
+			if s.eventService != nil {
+				// Reload the game with updated information
+				game, err = s.gameRepo.FindByID(gameID)
+				if err != nil {
+					return err
+				}
+
+				go s.eventService.NotifyGameStarted(game)
+			}
 		}
 	}
 
@@ -205,9 +235,17 @@ func (s *Service) SubmitSolution(gameID, userID, solution string) error {
 		progress = math.Min(0.8, float64(player.Attempts) * 0.1) // Max 80% for incorrect solutions
 	}
 
-	// Notify clients about the player's progress
-	if s.eventService != nil {
-		go s.eventService.NotifyPlayerProgress(gameID, userID, progress)
+	// Update progress in duel room if game type is duel
+	if game.GameType == "duel" {
+		err = s.duelService.UpdatePlayerProgress(gameID, userID, progress)
+		if err != nil {
+			log.Printf("Error updating player progress in duel: %v", err)
+		}
+	} else {
+		// Notify clients about the player's progress
+		if s.eventService != nil {
+			go s.eventService.NotifyPlayerProgress(gameID, userID, progress)
+		}
 	}
 
 	// If solution is correct, mark player as finished
@@ -221,9 +259,17 @@ func (s *Service) SubmitSolution(gameID, userID, solution string) error {
 		ratingChange := validationResult.RatingChange
 		player.RatingChange = &ratingChange
 
-		// Notify clients that a solution has been submitted
-		if s.eventService != nil {
-			go s.eventService.NotifySolutionSubmitted(gameID, userID, solution, isCorrect, score)
+		// Update solution in duel room if game type is duel
+		if game.GameType == "duel" {
+			err = s.duelService.SubmitSolution(gameID, userID, solution, isCorrect, score, *player.SolutionTime)
+			if err != nil {
+				log.Printf("Error submitting solution to duel: %v", err)
+			}
+		} else {
+			// Notify clients that a solution has been submitted
+			if s.eventService != nil {
+				go s.eventService.NotifySolutionSubmitted(gameID, userID, solution, isCorrect, score)
+			}
 		}
 
 		// Update user's rating
@@ -352,4 +398,9 @@ func (s *Service) GetRecentGames(limit, offset int) ([]models.Game, error) {
 // CountGames counts all games
 func (s *Service) CountGames() (int64, error) {
 	return s.gameRepo.CountGames()
+}
+
+// GetDuelStatus gets the status of a duel
+func (s *Service) GetDuelStatus(gameID string) (*models.GameResponse, error) {
+	return s.duelService.GetDuelStatus(gameID)
 }

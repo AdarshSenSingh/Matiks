@@ -38,7 +38,7 @@ const PlayLobbyDark = () => {
   const navigate = useNavigate();
 
   const handleStartDuel = () => {
-    setShowMatchmaking(true);
+    navigate("/game/duel/ranked");
   };
 
   const handleCancelMatchmaking = () => {
@@ -46,7 +46,11 @@ const PlayLobbyDark = () => {
   };
 
   const handlePracticeMode = () => {
-    navigate("/play/practice");
+    navigate("/game/practice");
+  };
+
+  const handleDailyChallenge = () => {
+    navigate("/game/daily");
   };
 
   // Animation variants
@@ -79,7 +83,7 @@ const PlayLobbyDark = () => {
     {
       title: "Duel Mode",
       description:
-        "Challenge other players in real-time duels. Solve the puzzle faster than your opponent to win!",
+        "Challenge other players in real-time duels. Choose between ranked matches to climb the leaderboard or unranked for casual play!",
       icon: <UserGroupIcon className="h-6 w-6 text-primary-400" />,
       features: [
         {
@@ -91,7 +95,7 @@ const PlayLobbyDark = () => {
           icon: <UserGroupIcon className="h-4 w-4 mr-2 text-primary-400" />,
         },
         {
-          text: "Earn rating points for wins",
+          text: "Toggle between ranked and unranked",
           icon: <TrophyIcon className="h-4 w-4 mr-2 text-primary-400" />,
         },
       ],
@@ -99,11 +103,12 @@ const PlayLobbyDark = () => {
         text: "Real-time Competition",
         icon: <BoltIcon className="h-3 w-3 mr-1" />,
       },
-      buttonText: "Find Opponent",
+      buttonText: "Start Duel",
       buttonIcon: <ArrowRightIcon className="h-5 w-5" />,
       onClick: handleStartDuel,
       variant: "primary",
     },
+
     {
       title: "Practice Mode",
       description:
@@ -157,7 +162,7 @@ const PlayLobbyDark = () => {
       },
       buttonText: "Today's Challenge",
       buttonIcon: <ArrowRightIcon className="h-5 w-5" />,
-      onClick: () => {},
+      onClick: handleDailyChallenge,
       variant: "accent",
     },
   ];

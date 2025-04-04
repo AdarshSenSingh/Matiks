@@ -2,6 +2,7 @@ package matchmaking
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"github.com/hectoclash/internal/game"
 	"github.com/hectoclash/internal/models"
 	"github.com/hectoclash/internal/repository"
+	"github.com/hectoclash/internal/websocket"
 )
 
 const (
@@ -20,6 +22,7 @@ const (
 	queueTimeoutKey    = "matchmaking:queue:timeout"
 	queueLockKey       = "matchmaking:queue:lock"
 	userQueueKey       = "matchmaking:user:%s"
+	userGameKey        = "matchmaking:user:%s:game"
 	matchmakingTimeout = 60 * time.Second
 	lockTimeout        = 5 * time.Second
 
@@ -36,6 +39,7 @@ type Service struct {
 	userRepo       *repository.UserRepository
 	gameService    *game.Service
 	matchProcessor *MatchProcessor
+	websocketHub   *websocket.Hub
 	mu             sync.Mutex
 	isRunning      bool
 	stopCh         chan struct{}
@@ -51,12 +55,13 @@ type QueueEntry struct {
 }
 
 // NewService creates a new matchmaking service
-func NewService(redisClient *redis.Client, userRepo *repository.UserRepository, gameService *game.Service) *Service {
+func NewService(redisClient *redis.Client, userRepo *repository.UserRepository, gameService *game.Service, websocketHub *websocket.Hub) *Service {
 	service := &Service{
-		redisClient: redisClient,
-		userRepo:    userRepo,
-		gameService: gameService,
-		stopCh:      make(chan struct{}),
+		redisClient:  redisClient,
+		userRepo:     userRepo,
+		gameService:  gameService,
+		websocketHub: websocketHub,
+		stopCh:       make(chan struct{}),
 	}
 
 	service.matchProcessor = NewMatchProcessor(service)
@@ -96,7 +101,7 @@ func (s *Service) Stop() {
 }
 
 // JoinQueue adds a player to the matchmaking queue
-func (s *Service) JoinQueue(userID, gameType string) error {
+func (s *Service) JoinQueue(userID, gameType string, ranked bool) error {
 	ctx := context.Background()
 
 	// Check if user is already in queue
@@ -116,14 +121,8 @@ func (s *Service) JoinQueue(userID, gameType string) error {
 		return fmt.Errorf("failed to get user: %w", err)
 	}
 
-	// Create queue entry
-	entry := QueueEntry{
-		UserID:    userID,
-		Rating:    user.Rating,
-		JoinedAt:  time.Now(),
-		GameType:  gameType,
-		Timeout:   time.Now().Add(matchmakingTimeout),
-	}
+	// Calculate timeout
+	timeout := time.Now().Add(matchmakingTimeout)
 
 	// Acquire lock
 	lockSuccess, err := s.redisClient.SetNX(ctx, queueLockKey, "1", lockTimeout).Result()
@@ -147,7 +146,21 @@ func (s *Service) JoinQueue(userID, gameType string) error {
 	}
 
 	// Store user queue data
-	err = s.redisClient.Set(ctx, userKey, gameType, matchmakingTimeout).Err()
+	userData := map[string]interface{}{
+		"game_type": gameType,
+		"ranked":    ranked,
+	}
+
+	// Convert to JSON
+	userDataJSON, err := json.Marshal(userData)
+	if err != nil {
+		// Cleanup if we can't marshal the data
+		s.redisClient.ZRem(ctx, queueKey, userID)
+		return fmt.Errorf("failed to marshal user data: %w", err)
+	}
+
+	// Store user queue data
+	err = s.redisClient.Set(ctx, userKey, string(userDataJSON), matchmakingTimeout).Err()
 	if err != nil {
 		// Cleanup if we can't store the data
 		s.redisClient.ZRem(ctx, queueKey, userID)
@@ -156,7 +169,7 @@ func (s *Service) JoinQueue(userID, gameType string) error {
 
 	// Store timeout
 	err = s.redisClient.ZAdd(ctx, queueTimeoutKey, &redis.Z{
-		Score:  float64(entry.Timeout.Unix()),
+		Score:  float64(timeout.Unix()),
 		Member: userID,
 	}).Err()
 	if err != nil {
@@ -225,42 +238,54 @@ func (s *Service) LeaveQueue(userID string) error {
 }
 
 // GetQueueStatus gets the status of a player in the matchmaking queue
-func (s *Service) GetQueueStatus(userID string) (bool, time.Duration, error) {
+func (s *Service) GetQueueStatus(userID string) (bool, time.Duration, string, error) {
 	ctx := context.Background()
 
 	// Check if user is in queue
 	userKey := fmt.Sprintf(userQueueKey, userID)
 	exists, err := s.redisClient.Exists(ctx, userKey).Result()
 	if err != nil {
-		return false, 0, fmt.Errorf("failed to check if user is in queue: %w", err)
+		return false, 0, "", fmt.Errorf("failed to check if user is in queue: %w", err)
 	}
 
 	if exists == 0 {
-		return false, 0, nil
+		return false, 0, "", nil
+	}
+
+	// Check if user is in a game
+	gameKey := fmt.Sprintf(userGameKey, userID)
+	gameID, err := s.redisClient.Get(ctx, gameKey).Result()
+	if err != nil && err != redis.Nil {
+		return false, 0, "", fmt.Errorf("failed to check if user is in a game: %w", err)
+	}
+
+	// If user is in a game, return the game ID
+	if err == nil && gameID != "" {
+		return true, 0, gameID, nil
 	}
 
 	// Check if user is in the queue
 	_, err = s.redisClient.ZRank(ctx, queueKey, userID).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return false, 0, nil
+			return false, 0, "", nil
 		}
-		return false, 0, fmt.Errorf("failed to get user's position in queue: %w", err)
+		return false, 0, "", fmt.Errorf("failed to get user's position in queue: %w", err)
 	}
 
 	// Get user's join time
 	score, err := s.redisClient.ZScore(ctx, queueTimeoutKey, userID).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return false, 0, nil
+			return false, 0, "", nil
 		}
-		return false, 0, fmt.Errorf("failed to get user's join time: %w", err)
+		return false, 0, "", fmt.Errorf("failed to get user's join time: %w", err)
 	}
 
 	timeout := time.Unix(int64(score), 0)
 	waitTime := time.Until(timeout)
 
-	return true, waitTime, nil
+	return true, waitTime, "", nil
 }
 
 // GetQueueLength gets the number of players in the matchmaking queue
@@ -303,8 +328,14 @@ func (s *Service) cleanupExpiredEntries() {
 
 			// Acquire lock
 			lockSuccess, err := s.redisClient.SetNX(ctx, queueLockKey, "1", lockTimeout).Result()
-			if err != nil || !lockSuccess {
-				log.Printf("Failed to acquire lock for cleanup: %v", err)
+			if err != nil {
+				log.Printf("Error acquiring lock for cleanup: %v", err)
+				continue
+			}
+
+			if !lockSuccess {
+				// This is normal - another instance might have the lock
+				// No need to log this as an error
 				continue
 			}
 

@@ -39,6 +39,8 @@ const (
 	MessageTypeGameEnd       MessageType = "game_end"
 	MessageTypePlayerProgress MessageType = "player_progress"
 	MessageTypeSolutionSubmitted MessageType = "solution_submitted"
+	MessageTypeMatchmakingStatus MessageType = "matchmaking_status"
+	MessageTypeMatchFound    MessageType = "match_found"
 	MessageTypeError         MessageType = "error"
 	MessageTypePing          MessageType = "ping"
 	MessageTypePong          MessageType = "pong"
@@ -82,6 +84,21 @@ type SolutionSubmittedPayload struct {
 	Solution  string `json:"solution"`
 }
 
+// MatchmakingStatusPayload represents the payload for a matchmaking status message
+type MatchmakingStatusPayload struct {
+	Status    string  `json:"status"`
+	WaitTime  float64 `json:"wait_time"`
+	QueueSize int     `json:"queue_size"`
+}
+
+// MatchFoundPayload represents the payload for a match found message
+type MatchFoundPayload struct {
+	GameID    string `json:"game_id"`
+	GameType  string `json:"game_type"`
+	Opponent  PlayerPayload `json:"opponent"`
+	IsRanked  bool   `json:"is_ranked"`
+}
+
 // ErrorPayload represents the payload for an error message
 type ErrorPayload struct {
 	Code    int    `json:"code"`
@@ -103,7 +120,7 @@ type Hub struct {
 	gameRooms map[string]map[*Client]bool
 
 	// Mutex for thread-safe operations
-	mu sync.Mutex
+	mu sync.RWMutex
 
 	// Message handlers
 	messageHandlers map[MessageType]func(*Client, *Message)
@@ -487,4 +504,94 @@ func (h *Hub) BroadcastGameEnd(gameID string, winnerID string, players []PlayerP
 
 	// Broadcast message
 	return h.BroadcastToGame(gameID, messageToBytes(msg))
+}
+
+// SendMatchmakingStatus sends a matchmaking status message to a specific client
+func (h *Hub) SendMatchmakingStatus(client *Client, status string, waitTime float64, queueSize int) error {
+	// Create matchmaking status message
+	payload := MatchmakingStatusPayload{
+		Status:    status,
+		WaitTime:  waitTime,
+		QueueSize: queueSize,
+	}
+
+	// Convert payload to JSON
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	// Create message
+	msg := &Message{
+		Type:      MessageTypeMatchmakingStatus,
+		UserID:    client.UserID,
+		Timestamp: time.Now().UnixNano() / int64(time.Millisecond),
+		Payload:   payloadBytes,
+	}
+
+	// Send message to client
+	msgBytes := messageToBytes(msg)
+	if msgBytes == nil {
+		return errors.New("failed to convert message to bytes")
+	}
+
+	select {
+	case client.Send <- msgBytes:
+		return nil
+	default:
+		return errors.New("client send buffer full")
+	}
+}
+
+// GetClientByUserID gets a client by user ID
+func (h *Hub) GetClientByUserID(userID string) *Client {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	for _, client := range h.clients {
+		if client.UserID == userID {
+			return client
+		}
+	}
+
+	return nil
+}
+
+// SendMatchFound sends a match found message to a specific client
+func (h *Hub) SendMatchFound(client *Client, gameID string, gameType string, opponent PlayerPayload, isRanked bool) error {
+	// Create match found message
+	payload := MatchFoundPayload{
+		GameID:   gameID,
+		GameType: gameType,
+		Opponent: opponent,
+		IsRanked: isRanked,
+	}
+
+	// Convert payload to JSON
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	// Create message
+	msg := &Message{
+		Type:      MessageTypeMatchFound,
+		UserID:    client.UserID,
+		GameID:    gameID,
+		Timestamp: time.Now().UnixNano() / int64(time.Millisecond),
+		Payload:   payloadBytes,
+	}
+
+	// Send message to client
+	msgBytes := messageToBytes(msg)
+	if msgBytes == nil {
+		return errors.New("failed to convert message to bytes")
+	}
+
+	select {
+	case client.Send <- msgBytes:
+		return nil
+	default:
+		return errors.New("client send buffer full")
+	}
 }

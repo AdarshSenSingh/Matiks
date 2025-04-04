@@ -212,3 +212,31 @@ func (h *GameHandler) SubmitSolution(c *gin.Context) {
 		"data":    game,
 	})
 }
+
+// GetDuelStatus gets the status of a duel
+func (h *GameHandler) GetDuelStatus(c *gin.Context) {
+	// Get game ID from URL
+	gameID := c.Param("id")
+	if gameID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Game ID is required",
+		})
+		return
+	}
+
+	// Get duel status
+	game, err := h.gameService.GetDuelStatus(gameID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"message": "Duel not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    game,
+	})
+}

@@ -70,7 +70,7 @@ func main() {
 	gameService := game.NewService(gameRepo, userRepo, puzzleService, eventService)
 
 	// Initialize matchmaking service
-	matchmakingService := matchmaking.NewService(redisClient, userRepo, gameService)
+	matchmakingService := matchmaking.NewService(redisClient, userRepo, gameService, wsHub)
 	go matchmakingService.Start()
 
 	// Initialize middlewares

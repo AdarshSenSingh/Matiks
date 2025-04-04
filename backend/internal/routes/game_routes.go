@@ -25,5 +25,8 @@ func SetupGameRoutes(router *gin.Engine, gameHandler *handlers.GameHandler, auth
 
 		// Submit a solution for a game (requires authentication)
 		gameGroup.POST("/:id/submit", authMiddleware.RequireAuth(), gameHandler.SubmitSolution)
+
+		// Get duel status (requires authentication)
+		gameGroup.GET("/:id/duel", authMiddleware.RequireAuth(), gameHandler.GetDuelStatus)
 	}
 }

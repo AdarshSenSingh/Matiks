@@ -2,10 +2,13 @@ package matchmaking
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
 	"time"
+
+	"github.com/hectoclash/internal/websocket"
 )
 
 // MatchProcessor handles the matching of players in the queue
@@ -96,12 +99,27 @@ func (p *MatchProcessor) ProcessMatches() {
 			continue
 		}
 
-		// Get player's game type
-		gameType, err := p.service.redisClient.Get(ctx, userKey).Result()
+		// Get player's queue data
+		userDataJSON, err := p.service.redisClient.Get(ctx, userKey).Result()
 		if err != nil {
-			log.Printf("Failed to get game type for user %s: %v", userID, err)
+			log.Printf("Failed to get queue data for user %s: %v", userID, err)
 			continue
 		}
+
+		// Parse user data
+		var userData struct {
+			GameType string `json:"game_type"`
+			Ranked   bool   `json:"ranked"`
+		}
+
+		err = json.Unmarshal([]byte(userDataJSON), &userData)
+		if err != nil {
+			log.Printf("Failed to parse queue data for user %s: %v", userID, err)
+			continue
+		}
+
+		gameType := userData.GameType
+		ranked := userData.Ranked
 
 		// Get player's join time
 		joinTimeScore, err := p.service.redisClient.ZScore(ctx, queueTimeoutKey, userID).Result()
@@ -172,6 +190,58 @@ func (p *MatchProcessor) ProcessMatches() {
 			if err != nil {
 				log.Printf("Failed to add player to game: %v", err)
 				continue
+			}
+
+			// Store game ID for both players
+			userGameKey1 := fmt.Sprintf(userGameKey, userID)
+			userGameKey2 := fmt.Sprintf(userGameKey, matchedUserID)
+			p.service.redisClient.Set(ctx, userGameKey1, game.ID, time.Hour)
+			p.service.redisClient.Set(ctx, userGameKey2, game.ID, time.Hour)
+
+			// Get user data for WebSocket notifications
+			user1, err := p.service.userRepo.FindByID(userID)
+			if err != nil {
+				log.Printf("Failed to get user data for WebSocket notification: %v", err)
+			}
+
+			user2, err := p.service.userRepo.FindByID(matchedUserID)
+			if err != nil {
+				log.Printf("Failed to get user data for WebSocket notification: %v", err)
+			}
+
+			// Get clients for both players
+			if p.service.websocketHub != nil {
+				// Find clients for both players
+				client1 := p.service.websocketHub.GetClientByUserID(userID)
+				client2 := p.service.websocketHub.GetClientByUserID(matchedUserID)
+
+				// Create player payloads
+				player1Payload := websocket.PlayerPayload{
+					UserID:   userID,
+					Username: user1.Username,
+					Progress: 0,
+				}
+
+				player2Payload := websocket.PlayerPayload{
+					UserID:   matchedUserID,
+					Username: user2.Username,
+					Progress: 0,
+				}
+
+				// Send match found notifications
+				if client1 != nil {
+					err := p.service.websocketHub.SendMatchFound(client1, game.ID, gameType, player2Payload, ranked)
+					if err != nil {
+						log.Printf("Failed to send match found notification to player 1: %v", err)
+					}
+				}
+
+				if client2 != nil {
+					err := p.service.websocketHub.SendMatchFound(client2, game.ID, gameType, player1Payload, ranked)
+					if err != nil {
+						log.Printf("Failed to send match found notification to player 2: %v", err)
+					}
+				}
 			}
 
 			// Remove both players from queue
