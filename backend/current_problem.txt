@@ -1,0 +1,862 @@
+[{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/cmd/generate_puzzles/main.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: repository.InitDB",
+	"source": "compiler",
+	"startLineNumber": 19,
+	"startColumn": 24,
+	"endLineNumber": 19,
+	"endColumn": 30
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/cmd/generate_puzzles/main.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: puzzle.DifficultyLevel",
+	"source": "compiler",
+	"startLineNumber": 46,
+	"startColumn": 60,
+	"endLineNumber": 46,
+	"endColumn": 75
+}]
+
+
+
+[{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/handlers/puzzle_handler.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "MissingFieldOrMethod",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "MissingFieldOrMethod"
+		}
+	},
+	"severity": 8,
+	"message": "h.puzzleService.GetPuzzle undefined (type *puzzle.Service has no field or method GetPuzzle)",
+	"source": "compiler",
+	"startLineNumber": 29,
+	"startColumn": 33,
+	"endLineNumber": 29,
+	"endColumn": 42
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/handlers/puzzle_handler.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UnusedVar",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UnusedVar"
+		}
+	},
+	"severity": 8,
+	"message": "declared and not used: userID",
+	"source": "compiler",
+	"startLineNumber": 42,
+	"startColumn": 3,
+	"endLineNumber": 42,
+	"endColumn": 9
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/handlers/puzzle_handler.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "MissingFieldOrMethod",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "MissingFieldOrMethod"
+		}
+	},
+	"severity": 8,
+	"message": "h.puzzleService.GetUserELO undefined (type *puzzle.Service has no field or method GetUserELO)",
+	"source": "compiler",
+	"startLineNumber": 68,
+	"startColumn": 30,
+	"endLineNumber": 68,
+	"endColumn": 40
+}]
+
+[{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/models/leaderboard.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"severity": 8,
+	"message": "expected ';', found 'EOF'",
+	"source": "syntax",
+	"startLineNumber": 1,
+	"startColumn": 1,
+	"endLineNumber": 1,
+	"endColumn": 1
+}]
+
+
+
+[{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/puzzle/expression_evaluator.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"severity": 8,
+	"message": "expected ';', found 'EOF'",
+	"source": "syntax",
+	"startLineNumber": 1,
+	"startColumn": 1,
+	"endLineNumber": 1,
+	"endColumn": 1
+}]
+
+[{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/puzzle/puzzle_generator.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: ExpressionEvaluator",
+	"source": "compiler",
+	"startLineNumber": 12,
+	"startColumn": 13,
+	"endLineNumber": 12,
+	"endColumn": 32
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/puzzle/puzzle_generator.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: NewExpressionEvaluator",
+	"source": "compiler",
+	"startLineNumber": 18,
+	"startColumn": 14,
+	"endLineNumber": 18,
+	"endColumn": 36
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/puzzle/puzzle_generator.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: op",
+	"source": "compiler",
+	"startLineNumber": 91,
+	"startColumn": 40,
+	"endLineNumber": 91,
+	"endColumn": 42
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/puzzle/puzzle_generator.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: op",
+	"source": "compiler",
+	"startLineNumber": 92,
+	"startColumn": 44,
+	"endLineNumber": 92,
+	"endColumn": 46
+}]
+
+[{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/puzzle/puzzle_service.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UnusedImport",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UnusedImport"
+		}
+	},
+	"severity": 8,
+	"message": "\"strconv\" imported and not used",
+	"source": "compiler",
+	"startLineNumber": 9,
+	"startColumn": 2,
+	"endLineNumber": 9,
+	"endColumn": 11,
+	"tags": [
+		1
+	]
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/puzzle/puzzle_service.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "MissingFieldOrMethod",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "MissingFieldOrMethod"
+		}
+	},
+	"severity": 8,
+	"message": "s.puzzleRepo.db undefined (cannot refer to unexported field db)",
+	"source": "compiler",
+	"startLineNumber": 147,
+	"startColumn": 22,
+	"endLineNumber": 147,
+	"endColumn": 24
+}]
+
+[{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/db.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 37,
+	"startColumn": 11,
+	"endLineNumber": 37,
+	"endColumn": 27
+}]
+
+[{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 22,
+	"startColumn": 54,
+	"endLineNumber": 22,
+	"endColumn": 70
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 27,
+	"startColumn": 54,
+	"endLineNumber": 27,
+	"endColumn": 70
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 33,
+	"startColumn": 29,
+	"endLineNumber": 33,
+	"endColumn": 45
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 37,
+	"startColumn": 62,
+	"endLineNumber": 37,
+	"endColumn": 78
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 38,
+	"startColumn": 19,
+	"endLineNumber": 38,
+	"endColumn": 35
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardType",
+	"source": "compiler",
+	"startLineNumber": 50,
+	"startColumn": 89,
+	"endLineNumber": 50,
+	"endColumn": 104
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 50,
+	"startColumn": 115,
+	"endLineNumber": 50,
+	"endColumn": 131
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 51,
+	"startColumn": 19,
+	"endLineNumber": 51,
+	"endColumn": 35
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 65,
+	"startColumn": 83,
+	"endLineNumber": 65,
+	"endColumn": 99
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 66,
+	"startColumn": 23,
+	"endLineNumber": 66,
+	"endColumn": 39
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardTypeGlobal",
+	"source": "compiler",
+	"startLineNumber": 68,
+	"startColumn": 28,
+	"endLineNumber": 68,
+	"endColumn": 49
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 77,
+	"startColumn": 83,
+	"endLineNumber": 77,
+	"endColumn": 99
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 78,
+	"startColumn": 23,
+	"endLineNumber": 78,
+	"endColumn": 39
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardTypeWeekly",
+	"source": "compiler",
+	"startLineNumber": 80,
+	"startColumn": 28,
+	"endLineNumber": 80,
+	"endColumn": 49
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 89,
+	"startColumn": 84,
+	"endLineNumber": 89,
+	"endColumn": 100
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 90,
+	"startColumn": 23,
+	"endLineNumber": 90,
+	"endColumn": 39
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardTypeMonthly",
+	"source": "compiler",
+	"startLineNumber": 92,
+	"startColumn": 28,
+	"endLineNumber": 92,
+	"endColumn": 50
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 101,
+	"startColumn": 99,
+	"endLineNumber": 101,
+	"endColumn": 115
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 102,
+	"startColumn": 23,
+	"endLineNumber": 102,
+	"endColumn": 39
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardTypeGlobal",
+	"source": "compiler",
+	"startLineNumber": 106,
+	"startColumn": 52,
+	"endLineNumber": 106,
+	"endColumn": 73
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardType",
+	"source": "compiler",
+	"startLineNumber": 115,
+	"startColumn": 83,
+	"endLineNumber": 115,
+	"endColumn": 98
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 116,
+	"startColumn": 19,
+	"endLineNumber": 116,
+	"endColumn": 35
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardType",
+	"source": "compiler",
+	"startLineNumber": 130,
+	"startColumn": 82,
+	"endLineNumber": 130,
+	"endColumn": 97
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 135,
+	"startColumn": 24,
+	"endLineNumber": 135,
+	"endColumn": 40
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardTypeWeekly",
+	"source": "compiler",
+	"startLineNumber": 162,
+	"startColumn": 38,
+	"endLineNumber": 162,
+	"endColumn": 59
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardTypeMonthly",
+	"source": "compiler",
+	"startLineNumber": 172,
+	"startColumn": 38,
+	"endLineNumber": 172,
+	"endColumn": 60
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardType",
+	"source": "compiler",
+	"startLineNumber": 176,
+	"startColumn": 76,
+	"endLineNumber": 176,
+	"endColumn": 91
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 181,
+	"startColumn": 19,
+	"endLineNumber": 181,
+	"endColumn": 35
+},{
+	"resource": "/Users/kumarsatyam/Desktop/Matiks/backend/internal/repository/leaderboard_repository.go",
+	"owner": "_generated_diagnostic_collection_name_#0",
+	"code": {
+		"value": "UndeclaredImportedName",
+		"target": {
+			"$mid": 1,
+			"path": "/golang.org/x/tools/internal/typesinternal",
+			"scheme": "https",
+			"authority": "pkg.go.dev",
+			"fragment": "UndeclaredImportedName"
+		}
+	},
+	"severity": 8,
+	"message": "undefined: models.LeaderboardEntry",
+	"source": "compiler",
+	"startLineNumber": 229,
+	"startColumn": 20,
+	"endLineNumber": 229,
+	"endColumn": 36
+}]

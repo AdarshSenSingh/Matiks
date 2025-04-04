@@ -1,0 +1,201 @@
+Understanding HectoClash: Real-time Competitive Mental Math Game
+I'll help you develop a comprehensive plan for HectoClash, a real-time competitive mental math game based on the Hectoc format. Let's start by gathering information and then create a detailed plan.
+
+Project Overview
+HectoClash will be a platform where users can:
+
+Participate in real-time duels solving Hectoc puzzles
+Compete against other players with time constraints
+Track their performance on leaderboards
+Potentially watch other players' duels (spectator mode)
+Receive educational insights on optimal solutions
+Technology Stack Exploration
+Since Go Lang is preferred, let's explore what technologies would work well for this project:
+
+Backend: Go (Golang)
+Fast, efficient, and excellent for real-time applications
+Good concurrency support for handling multiple simultaneous games
+Packages like Gorilla WebSocket for real-time communication
+Frontend:
+React.js for a responsive and interactive UI
+WebSockets for real-time game updates
+Database:
+PostgreSQL for persistent data (user profiles, game history, leaderboards)
+Redis for caching and real-time features (active games, matchmaking)
+Authentication:
+JWT with HTTP-only cookies for secure authentication
+Deployment:
+Docker for containerization
+Kubernetes for orchestration (if scaling is needed)
+Detailed Project Plan
+1. System Architecture
+Backend Components:
+User Service: Handle user registration, authentication, and profile management
+Game Service: Manage game creation, joining, and game state
+Matchmaking Service: Pair players for duels
+Puzzle Generator: Create random Hectoc puzzles
+Solution Validator: Verify user solutions
+Leaderboard Service: Track and display user rankings
+WebSocket Server: Enable real-time communication
+Frontend Components:
+Authentication Pages: Login, registration, password reset
+Game Lobby: Find opponents, view active games
+Game Interface: Interactive puzzle solving UI with timer
+Leaderboard View: Display rankings and statistics
+Profile Page: User stats and history
+Spectator Mode: Watch ongoing duels
+2. Database Schema
+Users Table:
+
+user_id (PK)
+username
+email
+password_hash
+created_at
+last_login
+rating/elo
+Games Table:
+
+game_id (PK)
+puzzle_sequence
+status (active, completed, abandoned)
+created_at
+completed_at
+winner_id (FK to Users)
+GamePlayers Table:
+
+game_player_id (PK)
+game_id (FK to Games)
+user_id (FK to Users)
+solution_submitted
+solution_time
+is_correct
+Leaderboard Table:
+
+user_id (FK to Users)
+games_played
+games_won
+average_solve_time
+rating/elo
+3. API Endpoints
+Authentication:
+
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/logout
+GET /api/auth/me
+Game Management:
+
+POST /api/games/create
+GET /api/games/active
+GET /api/games/{id}
+POST /api/games/{id}/join
+POST /api/games/{id}/submit-solution
+Matchmaking:
+
+POST /api/matchmaking/queue
+DELETE /api/matchmaking/queue
+Leaderboard:
+
+GET /api/leaderboard
+GET /api/leaderboard/user/{id}
+WebSocket Endpoints:
+
+/ws/game/{id} - Game state updates
+/ws/matchmaking - Matchmaking updates
+4. Game Logic
+Puzzle Generation:
+
+Algorithm to generate random 6-digit sequences
+Ensure puzzles have at least one valid solution
+Varying difficulty levels
+Solution Validation:
+
+Parse and evaluate mathematical expressions
+Verify all digits are used in the correct order
+Check if the result equals 100
+Scoring System:
+
+Time-based scoring
+Accuracy bonuses
+ELO/rating system for competitive ranking
+5. Real-time Communication
+WebSocket Events:
+
+game:start - Game has started
+game:update - Game state has changed
+game:solution - Player submitted a solution
+game:end - Game has ended
+matchmaking:found - Match found
+6. User Experience Flow
+User registers/logs in
+User enters matchmaking queue or creates a custom game
+System pairs users or waits for opponent to join
+Game starts with countdown
+Both players receive the same puzzle
+Players solve puzzle in real-time, seeing opponent's progress
+First correct solution wins, or best solution if time expires
+Results displayed with optimal solution
+Ratings updated
+Option to rematch or return to lobby
+7. Development Phases
+Phase 1: Core Backend
+Set up Go project structure
+Implement user authentication
+Create basic game logic and puzzle generation
+Develop solution validation
+Phase 2: Real-time Communication
+Implement WebSocket server
+Create matchmaking system
+Develop game state synchronization
+Phase 3: Frontend Development
+Build authentication UI
+Create game lobby interface
+Develop interactive game UI
+Implement real-time updates
+Phase 4: Advanced Features
+Leaderboard and ranking system
+Spectator mode
+Educational insights
+Performance optimizations
+Phase 5: Testing and Deployment
+Unit and integration testing
+Load testing for concurrent games
+Deployment setup
+Monitoring and logging
+8. Technical Challenges and Solutions
+Challenge: Real-time synchronization between players
+Solution: WebSockets with efficient state management and delta updates
+
+Challenge: Fair matchmaking
+Solution: ELO-based system with time-in-queue adjustments
+
+Challenge: Puzzle generation with guaranteed solutions
+Solution: Pre-generate and validate puzzles, store in a puzzle bank
+
+Challenge: Expression parsing and validation
+Solution: Implement a mathematical expression parser with operator precedence
+
+Challenge: Handling disconnections
+Solution: Grace periods, game state persistence, and reconnection handling
+
+9. Scalability Considerations
+Horizontal scaling of game servers
+Database sharding for user data
+Redis clustering for caching
+Microservice architecture for independent scaling
+CDN for static assets
+10. Security Measures
+HTTPS for all communications
+HTTP-only cookies for authentication
+Rate limiting for API endpoints
+Input validation and sanitization
+Protection against common attacks (CSRF, XSS)
+
+
+Next Steps
+Set up the basic project structure
+Implement core user authentication
+Develop the puzzle generation algorithm
+Create the solution validation logic
+Build the real-time game mechanics
