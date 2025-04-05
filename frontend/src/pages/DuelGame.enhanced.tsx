@@ -16,7 +16,6 @@ import {
   FloatingElement, 
   AnimatedText,
   TiltCard,
-  Confetti
 } from '../components/animations';
 
 import {

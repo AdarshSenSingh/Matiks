@@ -49,7 +49,8 @@ func main() {
 	})
 
 	// Initialize WebSocket hub
-	wsHub := websocket.NewHub()
+	// We'll set the matchmaking service after it's initialized
+	wsHub := websocket.NewHub(nil)
 	go wsHub.Run()
 
 	// Initialize repositories
@@ -72,6 +73,9 @@ func main() {
 	// Initialize matchmaking service
 	matchmakingService := matchmaking.NewService(redisClient, userRepo, gameService, wsHub)
 	go matchmakingService.Start()
+
+	// Set the matchmaking service in the WebSocket hub
+	wsHub.SetMatchmakingService(matchmakingService)
 
 	// Initialize middlewares
 	authMiddleware := middleware.NewAuthMiddleware(authService)

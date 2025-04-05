@@ -8,10 +8,11 @@ import {
   FireIcon,
   TrophyIcon,
   ArrowLeftIcon,
-  SwitchHorizontalIcon,
 } from "@heroicons/react/24/outline";
-import { gameAPI, matchmakingAPI } from "../services/api";
+import { gameAPI } from "../services/api";
+import DuelMatchmaking from "../components/game/DuelMatchmaking.dark";
 import { useWebSocket } from "../components/WebSocketProvider";
+import { useAuth } from "../hooks/useAuth";
 import { Button, Card, CardBody, Toggle } from "../components/ui";
 import { FadeIn, ScaleIn } from "../components/animations";
 import {
@@ -37,6 +38,8 @@ const DuelGame = () => {
   const [currentGameId, setCurrentGameId] = useState<string | undefined>(
     gameId
   );
+  const { isAuthenticated, user } = useAuth();
+  const { sendMessage } = useWebSocket();
   const [puzzle, setPuzzle] = useState<string>("");
   const [solution, setSolution] = useState<string>("");
   const [timeLeft, setTimeLeft] = useState<number>(60);
@@ -49,8 +52,13 @@ const DuelGame = () => {
   const [result, setResult] = useState<"win" | "lose" | null>(null);
   const [showHint, setShowHint] = useState<boolean>(false);
   const [streak, setStreak] = useState<number>(0);
-  const [showCountdown, setShowCountdown] = useState<boolean>(true);
+  const [showCountdown, setShowCountdown] = useState<boolean>(false);
   const [countdown, setCountdown] = useState<number>(3);
+  const [status, setStatus] = useState<{ state: string; message: string }>({
+    state: "waiting",
+    message: "Initializing game...",
+  });
+  // Matchmaking is now handled in the PlayLobby page
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -58,6 +66,78 @@ const DuelGame = () => {
   useEffect(() => {
     const initGame = async () => {
       try {
+        // Check if user is authenticated
+        if (!isAuthenticated) {
+          console.log("User is not authenticated, redirecting to login");
+          navigate("/login");
+          return;
+        }
+
+        console.log("Using WebSocket for matchmaking status updates");
+
+        // Set up event listeners for WebSocket events
+        const handleMatchmakingStatusUpdate = (event: any) => {
+          const data = event.detail;
+          console.log("Matchmaking status update received:", data);
+
+          // Update the UI with the matchmaking status
+          setStatus({
+            state: "waiting",
+            message: `Waiting for opponent... (${data.time_in_queue || 0}s)`,
+          });
+        };
+
+        const handleGameCreated = (event: any) => {
+          const data = event.detail;
+          console.log("Game created event received:", data);
+
+          // Handle game creation
+          const newGameId = data.game_id;
+          setCurrentGameId(newGameId);
+
+          // Update URL without reloading
+          window.history.replaceState(
+            null,
+            "",
+            `/game/duel/${isRanked ? "ranked" : "unranked"}/${newGameId}`
+          );
+
+          // If game data is included in the event, use it
+          if (data.game_data) {
+            setPuzzle(data.game_data.puzzle_sequence);
+
+            // Start countdown
+            const countdownTimer = setInterval(() => {
+              setCountdown((prev) => {
+                if (prev <= 1) {
+                  clearInterval(countdownTimer);
+                  setShowCountdown(false);
+                  setGameStatus("active");
+                  return 0;
+                }
+                return prev - 1;
+              });
+            }, 1000);
+          }
+        };
+
+        // Add event listeners
+        window.addEventListener(
+          "matchmaking_status_update",
+          handleMatchmakingStatusUpdate
+        );
+        window.addEventListener("game_created", handleGameCreated);
+
+        // Clean up event listeners when component unmounts
+        const cleanup = () => {
+          console.log("Cleaning up event listeners");
+          window.removeEventListener(
+            "matchmaking_status_update",
+            handleMatchmakingStatusUpdate
+          );
+          window.removeEventListener("game_created", handleGameCreated);
+        };
+
         // If we already have a game ID, load that game
         if (currentGameId) {
           const gameResponse = await gameAPI.getGameById(currentGameId);
@@ -87,57 +167,153 @@ const DuelGame = () => {
           }
         } else {
           // Join matchmaking queue
-          const response = await matchmakingAPI.joinQueue("duel", isRanked);
+          console.log(
+            "Joining matchmaking queue with game_type: duel, ranked:",
+            isRanked
+          );
+          try {
+            // Use WebSocket for matchmaking instead of HTTP API
+            console.log("Using WebSocket for matchmaking");
 
-          if (response.data.success) {
-            // Start polling for queue status
-            const statusInterval = setInterval(async () => {
-              try {
-                const statusResponse = await matchmakingAPI.getQueueStatus();
+            // Show matchmaking UI
+            setShowMatchmaking(true);
 
-                if (statusResponse.data.data.game_id) {
-                  // Game created, clear interval and get game details
-                  clearInterval(statusInterval);
+            // Set status to waiting
+            setStatus({
+              state: "waiting",
+              message: "Waiting for opponent...",
+            });
 
-                  const newGameId = statusResponse.data.data.game_id;
-                  setCurrentGameId(newGameId);
+            // Send join queue message via WebSocket
+            const joinQueueMessage = {
+              type: "join_queue",
+              timestamp: Date.now(),
+              payload: {
+                game_type: "duel",
+                ranked: isRanked,
+              },
+            };
 
-                  // Update URL without reloading
-                  window.history.replaceState(
-                    null,
-                    "",
-                    `/game/duel/${
-                      isRanked ? "ranked" : "unranked"
-                    }/${newGameId}`
-                  );
+            console.log("Sending WebSocket message:", joinQueueMessage);
+            sendMessage(joinQueueMessage);
 
-                  const gameResponse = await gameAPI.getGameById(newGameId);
+            // Set up a timeout for matchmaking
+            const matchmakingTimeout = setTimeout(() => {
+              console.log("Matchmaking timeout reached");
 
-                  if (gameResponse.data.success) {
-                    const gameData = gameResponse.data.data;
-                    setPuzzle(gameData.puzzle_sequence);
+              // Update status to show timeout
+              setStatus({
+                state: "timeout",
+                message: "Matchmaking timeout reached. No opponent found.",
+              });
 
-                    // Start countdown
-                    const countdownTimer = setInterval(() => {
-                      setCountdown((prev) => {
-                        if (prev <= 1) {
-                          clearInterval(countdownTimer);
-                          setShowCountdown(false);
-                          setGameStatus("active");
-                          return 0;
-                        }
-                        return prev - 1;
-                      });
-                    }, 1000);
-                  }
-                }
-              } catch (error) {
-                console.error("Error checking queue status:", error);
+              // Hide matchmaking UI
+              setShowMatchmaking(false);
+
+              // Send leave queue message
+              const leaveQueueMessage = {
+                type: "leave_queue",
+              };
+              sendMessage(leaveQueueMessage);
+
+              // Show retry button by updating the status
+              setStatus({
+                state: "retry",
+                message: "No opponent found. Would you like to try again?",
+              });
+            }, 60000); // 60 seconds timeout
+
+            // Set up event listeners for WebSocket events
+            const handleMatchmakingStatusUpdate = (event: any) => {
+              const data = event.detail;
+              console.log("Matchmaking status update received:", data);
+
+              // Update the UI with the matchmaking status
+              setStatus({
+                state: "waiting",
+                message: `Waiting for opponent... (${
+                  data.time_in_queue || 0
+                }s)`,
+              });
+            };
+
+            const handleGameCreated = (event: any) => {
+              const data = event.detail;
+              console.log("Game created event received:", data);
+
+              // Handle game creation
+              const newGameId = data.game_id;
+              setCurrentGameId(newGameId);
+
+              // Update URL without reloading
+              window.history.replaceState(
+                null,
+                "",
+                `/game/duel/${isRanked ? "ranked" : "unranked"}/${newGameId}`
+              );
+
+              // If game data is included in the event, use it
+              if (data.game_data) {
+                setPuzzle(data.game_data.puzzle_sequence);
+
+                // Hide matchmaking UI
+                setShowMatchmaking(false);
+
+                // Reset countdown and show it
+                setCountdown(3);
+                setShowCountdown(true);
+
+                // Start countdown
+                const countdownTimer = setInterval(() => {
+                  setCountdown((prev) => {
+                    if (prev <= 1) {
+                      clearInterval(countdownTimer);
+                      setShowCountdown(false);
+                      setGameStatus("active");
+                      return 0;
+                    }
+                    return prev - 1;
+                  });
+                }, 1000);
               }
-            }, 2000); // Check every 2 seconds
+            };
 
-            // Clean up interval on unmount
-            return () => clearInterval(statusInterval);
+            // Add event listeners
+            window.addEventListener(
+              "matchmaking_status_update",
+              handleMatchmakingStatusUpdate
+            );
+            window.addEventListener("game_created", handleGameCreated);
+
+            // Return cleanup function
+            return () => {
+              console.log("Cleaning up event listeners");
+              window.removeEventListener(
+                "matchmaking_status_update",
+                handleMatchmakingStatusUpdate
+              );
+              window.removeEventListener("game_created", handleGameCreated);
+
+              // Clear the matchmaking timeout
+              clearTimeout(matchmakingTimeout);
+
+              // Hide matchmaking UI
+              setShowMatchmaking(false);
+
+              // Send leave queue message via WebSocket
+              const leaveQueueMessage = {
+                type: "leave_queue",
+                timestamp: Date.now(),
+                payload: {},
+              };
+              sendMessage(leaveQueueMessage);
+            };
+          } catch (error) {
+            console.error("Error joining matchmaking queue:", error);
+            setStatus({
+              state: "error",
+              message: "Failed to join matchmaking queue. Please try again.",
+            });
           }
         }
       } catch (error) {
@@ -160,10 +336,20 @@ const DuelGame = () => {
 
         return () => clearInterval(countdownTimer);
       }
+
+      // Return a no-op function if we didn't set up any event listeners
+      return () => {};
     };
 
-    initGame();
-  }, [isRanked, currentGameId]);
+    const cleanupFunction = initGame();
+
+    // Return cleanup function
+    return () => {
+      if (typeof cleanupFunction === "function") {
+        cleanupFunction();
+      }
+    };
+  }, [isRanked, currentGameId, isAuthenticated, navigate]);
 
   // Focus the input field when the game starts
   useEffect(() => {
@@ -234,7 +420,7 @@ const DuelGame = () => {
         setPlayerProgress(Math.min((solution.length / 15) * 100, 95));
       }
 
-      if (prev <= 0) {
+      if (timeLeft <= 0) {
         clearInterval(timer);
         setGameStatus("completed");
         setResult(opponentProgress >= playerProgress ? "lose" : "win");
@@ -422,6 +608,7 @@ const DuelGame = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      {/* Matchmaking is now handled in the PlayLobby page */}
       {/* Countdown overlay */}
       <AnimatePresence>
         {showCountdown && (

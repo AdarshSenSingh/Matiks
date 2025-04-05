@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useWebSocket } from "../components/WebSocketProvider";
+import { useAuth } from "../hooks/useAuth";
 import {
   UserGroupIcon,
   UserIcon,
@@ -35,14 +37,91 @@ import DuelMatchmaking from "../components/game/DuelMatchmaking.dark";
 
 const PlayLobbyDark = () => {
   const [showMatchmaking, setShowMatchmaking] = useState(false);
+  const [isRanked, setIsRanked] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { sendMessage } = useWebSocket();
+  const { isAuthenticated } = useAuth();
 
-  const handleStartDuel = () => {
-    navigate("/game/duel/ranked");
+  // Listen for WebSocket events
+  useEffect(() => {
+    // Handle game created event
+    const handleGameCreated = (event: any) => {
+      const data = event.detail;
+      console.log("Game created event received:", data);
+
+      // Hide matchmaking UI
+      setShowMatchmaking(false);
+
+      // Navigate to the duel game page
+      const newGameId = data.game_id;
+      navigate(`/game/duel/${isRanked ? "ranked" : "unranked"}/${newGameId}`);
+    };
+
+    // Handle error event
+    const handleError = (event: any) => {
+      const data = event.detail;
+      console.log("Error event received:", data);
+
+      // Set error message
+      if (data && data.message) {
+        setError(data.message);
+      } else {
+        setError("An unknown error occurred");
+      }
+
+      // Hide matchmaking UI after a short delay
+      setTimeout(() => {
+        setShowMatchmaking(false);
+      }, 3000);
+    };
+
+    // Add event listeners
+    window.addEventListener("game_created", handleGameCreated);
+    window.addEventListener("error_message", handleError);
+
+    // Clean up event listeners
+    return () => {
+      window.removeEventListener("game_created", handleGameCreated);
+      window.removeEventListener("error_message", handleError);
+    };
+  }, [navigate, isRanked]);
+
+  const handleStartDuel = (ranked: boolean) => {
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+
+    setIsRanked(ranked);
+    setShowMatchmaking(true);
+
+    // Send join queue message via WebSocket
+    const joinQueueMessage = {
+      type: "join_queue",
+      timestamp: Date.now(),
+      payload: {
+        game_type: "duel",
+        ranked: ranked,
+      },
+    };
+
+    console.log("Sending WebSocket message:", joinQueueMessage);
+    sendMessage(joinQueueMessage);
   };
 
   const handleCancelMatchmaking = () => {
     setShowMatchmaking(false);
+
+    // Send leave queue message via WebSocket
+    const leaveQueueMessage = {
+      type: "leave_queue",
+      timestamp: Date.now(),
+      payload: {},
+    };
+
+    console.log("Sending leave queue message:", leaveQueueMessage);
+    sendMessage(leaveQueueMessage);
   };
 
   const handlePracticeMode = () => {
@@ -105,7 +184,7 @@ const PlayLobbyDark = () => {
       },
       buttonText: "Start Duel",
       buttonIcon: <ArrowRightIcon className="h-5 w-5" />,
-      onClick: handleStartDuel,
+      onClick: () => handleStartDuel(true),
       variant: "primary",
     },
 
@@ -280,7 +359,7 @@ const PlayLobbyDark = () => {
           initial="hidden"
           animate="visible"
         >
-          {gameModes.map((mode, index) => (
+          {gameModes.map((mode) => (
             <motion.div key={mode.title} variants={itemVariants}>
               <TiltCard
                 tiltFactor={10}
@@ -518,6 +597,8 @@ const PlayLobbyDark = () => {
       <DuelMatchmaking
         isOpen={showMatchmaking}
         onCancel={handleCancelMatchmaking}
+        isRanked={isRanked}
+        error={error}
       />
     </div>
   );

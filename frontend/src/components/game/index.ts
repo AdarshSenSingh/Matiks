@@ -1,4 +1,4 @@
-export { default as DuelMatchmaking } from "./DuelMatchmaking";
+export { default as DuelMatchmaking } from "./DuelMatchmaking.dark";
 export { default as ProgressBar } from "./ProgressBar";
 export { default as CountdownTimer } from "./CountdownTimer";
 export { default as GameResult } from "./GameResult";

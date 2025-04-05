@@ -3,6 +3,7 @@ package websocket
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -44,6 +45,8 @@ const (
 	MessageTypeError         MessageType = "error"
 	MessageTypePing          MessageType = "ping"
 	MessageTypePong          MessageType = "pong"
+	MessageTypeJoinQueue     MessageType = "join_queue"
+	MessageTypeLeaveQueue    MessageType = "leave_queue"
 )
 
 // Message represents a WebSocket message
@@ -105,6 +108,24 @@ type ErrorPayload struct {
 	Message string `json:"message"`
 }
 
+// JoinQueuePayload represents the payload for a join queue message
+type JoinQueuePayload struct {
+	GameType string `json:"game_type"`
+	Ranked   bool   `json:"ranked"`
+}
+
+// LeaveQueuePayload represents the payload for a leave queue message
+type LeaveQueuePayload struct {
+	GameType string `json:"game_type,omitempty"`
+}
+
+// MatchmakingService defines the interface for matchmaking operations
+type MatchmakingService interface {
+	JoinQueue(userID, gameType string, ranked bool) error
+	LeaveQueue(userID string) error
+	GetQueueStatus(userID string) (bool, time.Duration, string, error)
+}
+
 // Hub maintains the set of active clients and broadcasts messages
 type Hub struct {
 	// Registered clients
@@ -124,16 +145,20 @@ type Hub struct {
 
 	// Message handlers
 	messageHandlers map[MessageType]func(*Client, *Message)
+
+	// Matchmaking service
+	matchmakingService MatchmakingService
 }
 
 // NewHub creates a new WebSocket hub
-func NewHub() *Hub {
+func NewHub(matchmakingService MatchmakingService) *Hub {
 	hub := &Hub{
-		clients:         make(map[string]*Client),
-		register:        make(chan *Client),
-		unregister:      make(chan *Client),
-		gameRooms:       make(map[string]map[*Client]bool),
-		messageHandlers: make(map[MessageType]func(*Client, *Message)),
+		clients:            make(map[string]*Client),
+		register:           make(chan *Client),
+		unregister:         make(chan *Client),
+		gameRooms:          make(map[string]map[*Client]bool),
+		messageHandlers:    make(map[MessageType]func(*Client, *Message)),
+		matchmakingService: matchmakingService,
 	}
 
 	// Register default message handlers
@@ -176,6 +201,116 @@ func (h *Hub) registerDefaultHandlers() {
 		if msg.GameID != "" {
 			h.BroadcastToGame(msg.GameID, messageToBytes(msg))
 		}
+	})
+
+	// Register join queue handler
+	h.RegisterMessageHandler(MessageTypeJoinQueue, func(c *Client, msg *Message) {
+		// Parse the payload
+		var payload JoinQueuePayload
+		if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+			log.Printf("Error parsing join queue payload: %v", err)
+			return
+		}
+
+		// Call the matchmaking service to join the queue
+		log.Printf("User %s joining queue for game type %s (ranked: %v)", c.UserID, payload.GameType, payload.Ranked)
+
+		// Get the matchmaking service from the context
+		matchmakingService := h.matchmakingService
+		if matchmakingService == nil {
+			log.Printf("Matchmaking service not available")
+			return
+		}
+
+		// Join the queue
+		err := matchmakingService.JoinQueue(c.UserID, payload.GameType, payload.Ranked)
+		if err != nil {
+			log.Printf("Error joining queue: %v", err)
+
+			// Send error message to client
+			errorPayload := struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+			}{
+				Code:    400,
+				Message: fmt.Sprintf("Failed to join queue: %v", err),
+			}
+
+			payloadBytes, _ := json.Marshal(errorPayload)
+
+			errorMsg := &Message{
+				Type:      MessageTypeError,
+				UserID:    c.UserID,
+				Timestamp: time.Now().UnixNano() / int64(time.Millisecond),
+				Payload:   payloadBytes,
+			}
+			h.sendMessageToClient(c, errorMsg)
+			return
+		}
+
+		// Send a matchmaking status update
+		statusMsg := &Message{
+			Type:      MessageTypeMatchmakingStatus,
+			UserID:    c.UserID,
+			Timestamp: time.Now().UnixNano() / int64(time.Millisecond),
+			Payload:   []byte(`{"status":"queued","time_in_queue":0}`),
+		}
+		h.sendMessageToClient(c, statusMsg)
+	})
+
+	// Register leave queue handler
+	h.RegisterMessageHandler(MessageTypeLeaveQueue, func(c *Client, msg *Message) {
+		// Parse the payload
+		var payload LeaveQueuePayload
+		if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+			log.Printf("Error parsing leave queue payload: %v", err)
+			return
+		}
+
+		// Call the matchmaking service to leave the queue
+		log.Printf("User %s leaving queue", c.UserID)
+
+		// Get the matchmaking service from the context
+		matchmakingService := h.matchmakingService
+		if matchmakingService == nil {
+			log.Printf("Matchmaking service not available")
+			return
+		}
+
+		// Leave the queue
+		err := matchmakingService.LeaveQueue(c.UserID)
+		if err != nil {
+			log.Printf("Error leaving queue: %v", err)
+
+			// Send error message to client
+			errorPayload := struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+			}{
+				Code:    400,
+				Message: fmt.Sprintf("Failed to leave queue: %v", err),
+			}
+
+			payloadBytes, _ := json.Marshal(errorPayload)
+
+			errorMsg := &Message{
+				Type:      MessageTypeError,
+				UserID:    c.UserID,
+				Timestamp: time.Now().UnixNano() / int64(time.Millisecond),
+				Payload:   payloadBytes,
+			}
+			h.sendMessageToClient(c, errorMsg)
+			return
+		}
+
+		// Send a matchmaking status update
+		statusMsg := &Message{
+			Type:      MessageTypeMatchmakingStatus,
+			UserID:    c.UserID,
+			Timestamp: time.Now().UnixNano() / int64(time.Millisecond),
+			Payload:   []byte(`{"status":"left_queue"}`),
+		}
+		h.sendMessageToClient(c, statusMsg)
 	})
 }
 
@@ -251,6 +386,13 @@ func (h *Hub) sendMessageToClient(client *Client, msg *Message) {
 		// Client send buffer is full, remove client
 		h.unregister <- client
 	}
+}
+
+// SetMatchmakingService sets the matchmaking service for the hub
+func (h *Hub) SetMatchmakingService(service MatchmakingService) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.matchmakingService = service
 }
 
 // Run starts the WebSocket hub

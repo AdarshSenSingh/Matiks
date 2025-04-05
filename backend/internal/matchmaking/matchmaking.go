@@ -20,7 +20,7 @@ const (
 	// Queue keys
 	queueKey           = "matchmaking:queue"
 	queueTimeoutKey    = "matchmaking:queue:timeout"
-	queueLockKey       = "matchmaking:queue:lock"
+	queueLockKey       = "matchmaking:queue:lock:%s" // Now includes user ID
 	userQueueKey       = "matchmaking:user:%s"
 	userGameKey        = "matchmaking:user:%s:game"
 	matchmakingTimeout = 60 * time.Second
@@ -124,17 +124,25 @@ func (s *Service) JoinQueue(userID, gameType string, ranked bool) error {
 	// Calculate timeout
 	timeout := time.Now().Add(matchmakingTimeout)
 
-	// Acquire lock
-	lockSuccess, err := s.redisClient.SetNX(ctx, queueLockKey, "1", lockTimeout).Result()
+	// Acquire lock with user-specific key
+	userLockKey := fmt.Sprintf(queueLockKey, userID)
+	lockSuccess, err := s.redisClient.SetNX(ctx, userLockKey, "1", lockTimeout).Result()
 	if err != nil {
 		return fmt.Errorf("failed to acquire lock: %w", err)
 	}
 
 	if !lockSuccess {
+		// If we can't acquire the lock, the user might already be in the process of joining
+		// Let's check if they're already in the queue
+		exists, err := s.redisClient.Exists(ctx, userKey).Result()
+		if err == nil && exists > 0 {
+			// User is already in queue, return success
+			return nil
+		}
 		return errors.New("failed to acquire lock for queue operation")
 	}
 
-	defer s.redisClient.Del(ctx, queueLockKey)
+	defer s.redisClient.Del(ctx, userLockKey)
 
 	// Add to queue
 	err = s.redisClient.ZAdd(ctx, queueKey, &redis.Z{
@@ -146,7 +154,7 @@ func (s *Service) JoinQueue(userID, gameType string, ranked bool) error {
 	}
 
 	// Store user queue data
-	userData := map[string]interface{}{
+	userData := map[string]any{
 		"game_type": gameType,
 		"ranked":    ranked,
 	}
@@ -202,17 +210,25 @@ func (s *Service) LeaveQueue(userID string) error {
 		return errors.New("user is not in matchmaking queue")
 	}
 
-	// Acquire lock
-	lockSuccess, err := s.redisClient.SetNX(ctx, queueLockKey, "1", lockTimeout).Result()
+	// Acquire lock with user-specific key
+	userLockKey := fmt.Sprintf(queueLockKey, userID)
+	lockSuccess, err := s.redisClient.SetNX(ctx, userLockKey, "1", lockTimeout).Result()
 	if err != nil {
 		return fmt.Errorf("failed to acquire lock: %w", err)
 	}
 
 	if !lockSuccess {
+		// If we can't acquire the lock, the user might already be in the process of leaving
+		// Let's check if they're still in the queue
+		exists, err := s.redisClient.Exists(ctx, userKey).Result()
+		if err == nil && exists == 0 {
+			// User is already gone from queue, return success
+			return nil
+		}
 		return errors.New("failed to acquire lock for queue operation")
 	}
 
-	defer s.redisClient.Del(ctx, queueLockKey)
+	defer s.redisClient.Del(ctx, userLockKey)
 
 	// Remove from queue
 	err = s.redisClient.ZRem(ctx, queueKey, userID).Err()
@@ -245,7 +261,9 @@ func (s *Service) GetQueueStatus(userID string) (bool, time.Duration, string, er
 	userKey := fmt.Sprintf(userQueueKey, userID)
 	exists, err := s.redisClient.Exists(ctx, userKey).Result()
 	if err != nil {
-		return false, 0, "", fmt.Errorf("failed to check if user is in queue: %w", err)
+		// Log the error but don't fail the request
+		log.Printf("Error checking if user %s is in queue: %v", userID, err)
+		return false, 0, "", nil
 	}
 
 	if exists == 0 {

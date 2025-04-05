@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 import {
-  UserIcon,
-  ArrowPathIcon,
   XMarkIcon,
   BoltIcon,
   ClockIcon,
@@ -11,56 +9,74 @@ import {
   FireIcon,
   TrophyIcon,
   SparklesIcon,
+  LightBulbIcon,
+  ShieldCheckIcon,
+  StarIcon,
+  ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import { DarkButton } from "../ui";
-import { NumberCounter, MathBackground } from "../animations";
+import { NumberCounter } from "../animations";
+import { useAuth } from "../../hooks/useAuth";
 
 interface DuelMatchmakingProps {
   onCancel: () => void;
   isOpen: boolean;
+  isRanked?: boolean;
+  error?: string | null;
 }
 
-const DuelMatchmakingDark = ({ onCancel, isOpen }: DuelMatchmakingProps) => {
+const DuelMatchmakingDark = ({
+  onCancel,
+  isOpen,
+  isRanked = true,
+  error = null,
+}: DuelMatchmakingProps) => {
+  const { user } = useAuth();
   const [searchTime, setSearchTime] = useState(0);
-  const [foundMatch, setFoundMatch] = useState(false);
-  const [opponent, setOpponent] = useState<{
+  // Using foundMatch without setter for display logic only
+  const [foundMatch] = useState(false);
+  // Using opponent without setter for display logic only
+  const [opponent] = useState<{
     username: string;
     rating: number;
   } | null>(null);
   const [searchingDots, setSearchingDots] = useState("");
-  const navigate = useNavigate();
+  const [currentTip, setCurrentTip] = useState(0);
+  const [estimatedTime, setEstimatedTime] = useState<number>(60); // Estimated wait time in seconds
+  const [pulseEffect, setPulseEffect] = useState(false);
 
-  // Simulate searching for an opponent
+  // Tips to display while searching
+  const tips = [
+    {
+      icon: <LightBulbIcon className="h-4 w-4 mr-2 text-yellow-400" />,
+      text: "Use all six numbers exactly once in your solution.",
+    },
+    {
+      icon: <StarIcon className="h-4 w-4 mr-2 text-yellow-400" />,
+      text: "The target number is always 100 in Hectoc puzzles.",
+    },
+    {
+      icon: <ChartBarIcon className="h-4 w-4 mr-2 text-yellow-400" />,
+      text: "Ranked matches affect your ELO rating.",
+    },
+    {
+      icon: <ShieldCheckIcon className="h-4 w-4 mr-2 text-yellow-400" />,
+      text: "You can use +, -, ×, ÷, and parentheses in your solution.",
+    },
+  ];
+
+  // Just track search time, don't simulate finding an opponent
   useEffect(() => {
     if (!isOpen) return;
 
     const searchInterval = setInterval(() => {
       setSearchTime((prev) => prev + 1);
-
-      // Simulate finding a match after a random time between 3-8 seconds
-      if (searchTime > 0 && !foundMatch && Math.random() < 0.1) {
-        setFoundMatch(true);
-
-        // Generate a random opponent
-        const opponents = [
-          { username: "MathWizard", rating: 1850 },
-          { username: "NumberNinja", rating: 1920 },
-          { username: "CalculusKing", rating: 2100 },
-          { username: "AlgebraMaster", rating: 1750 },
-          { username: "PrimeTime", rating: 1680 },
-        ];
-
-        setOpponent(opponents[Math.floor(Math.random() * opponents.length)]);
-
-        // Navigate to game after a short delay
-        setTimeout(() => {
-          navigate("/play/duel");
-        }, 3000);
-      }
+      // Decrease estimated time as search time increases
+      setEstimatedTime((prev) => Math.max(5, prev - 1));
     }, 1000);
 
     return () => clearInterval(searchInterval);
-  }, [isOpen, searchTime, foundMatch, navigate]);
+  }, [isOpen]);
 
   // Animate searching dots
   useEffect(() => {
@@ -76,6 +92,29 @@ const DuelMatchmakingDark = ({ onCancel, isOpen }: DuelMatchmakingProps) => {
     return () => clearInterval(dotsInterval);
   }, [isOpen, foundMatch]);
 
+  // Cycle through tips
+  useEffect(() => {
+    if (!isOpen || foundMatch) return;
+
+    const tipInterval = setInterval(() => {
+      setCurrentTip((prev) => (prev + 1) % tips.length);
+    }, 8000);
+
+    return () => clearInterval(tipInterval);
+  }, [isOpen, foundMatch, tips.length]);
+
+  // Pulse effect every 5 seconds
+  useEffect(() => {
+    if (!isOpen || foundMatch) return;
+
+    const pulseInterval = setInterval(() => {
+      setPulseEffect(true);
+      setTimeout(() => setPulseEffect(false), 1000);
+    }, 5000);
+
+    return () => clearInterval(pulseInterval);
+  }, [isOpen, foundMatch]);
+
   // Format search time as MM:SS
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -89,24 +128,28 @@ const DuelMatchmakingDark = ({ onCancel, isOpen }: DuelMatchmakingProps) => {
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
+          {/* Background effects */}
+          <div className="absolute inset-0 z-0 bg-gradient-to-br from-gray-900 to-gray-950 opacity-80"></div>
           <motion.div
-            className="bg-gray-900 rounded-xl shadow-xl overflow-hidden w-full max-w-md border border-gray-800/50 relative"
+            className="bg-gray-900 rounded-xl shadow-xl overflow-hidden w-full max-w-md border border-gray-800/50 relative z-10"
             initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+            animate={{
+              scale: 1,
+              opacity: 1,
+              boxShadow: pulseEffect
+                ? "0 0 30px rgba(79, 70, 229, 0.6)"
+                : "0 0 20px rgba(79, 70, 229, 0.3)",
+            }}
             exit={{ scale: 0.9, opacity: 0 }}
             transition={{ type: "spring", damping: 25 }}
           >
-            <div className="absolute inset-0 opacity-10 overflow-hidden">
-              <MathBackground
-                speed={0.5}
-                size={30}
-                color="rgba(79, 70, 229, 0.2)"
-              />
+            <div className="absolute inset-0 opacity-10 overflow-hidden bg-pattern-math">
+              {/* Math pattern background */}
             </div>
             <div className="bg-gradient-to-r from-primary-800 to-primary-900 p-5 text-white relative border-b border-primary-700/50">
               <motion.h2
@@ -121,7 +164,16 @@ const DuelMatchmakingDark = ({ onCancel, isOpen }: DuelMatchmakingProps) => {
                     <SparklesIcon className="h-5 w-5 ml-2 text-yellow-400" />
                   </>
                 ) : (
-                  `Finding Opponent${searchingDots}`
+                  <>
+                    <motion.span
+                      animate={{ opacity: [0.7, 1, 0.7] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="flex items-center"
+                    >
+                      <BoltIcon className="h-5 w-5 mr-2 text-yellow-400" />
+                      Finding Opponent{searchingDots}
+                    </motion.span>
+                  </>
                 )}
               </motion.h2>
               <motion.button
@@ -140,11 +192,11 @@ const DuelMatchmakingDark = ({ onCancel, isOpen }: DuelMatchmakingProps) => {
                 <div className="text-center">
                   <div className="mb-8 relative">
                     <motion.div
-                      className="w-28 h-28 rounded-full bg-primary-900/50 mx-auto flex items-center justify-center border border-primary-700/50 shadow-lg shadow-primary-900/20 relative"
+                      className="w-32 h-32 rounded-full bg-primary-900/50 mx-auto flex items-center justify-center border border-primary-700/50 shadow-lg shadow-primary-900/20 relative"
                       animate={{
                         boxShadow: [
                           "0 0 0 rgba(79, 70, 229, 0.3)",
-                          "0 0 20px rgba(79, 70, 229, 0.6)",
+                          "0 0 30px rgba(79, 70, 229, 0.6)",
                           "0 0 0 rgba(79, 70, 229, 0.3)",
                         ],
                       }}
@@ -172,7 +224,12 @@ const DuelMatchmakingDark = ({ onCancel, isOpen }: DuelMatchmakingProps) => {
                       >
                         <div className="h-full w-full rounded-full border-t-2 border-r-2 border-accent-500 opacity-50"></div>
                       </motion.div>
-                      <UserGroupIcon className="h-12 w-12 text-primary-400 animate-pulse" />
+                      <motion.div
+                        animate={{ scale: [1, 1.1, 1] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        <UserGroupIcon className="h-14 w-14 text-primary-400" />
+                      </motion.div>
                     </motion.div>
 
                     <motion.div
@@ -184,18 +241,96 @@ const DuelMatchmakingDark = ({ onCancel, isOpen }: DuelMatchmakingProps) => {
                     </motion.div>
                   </div>
 
-                  <div className="mb-6">
+                  <div className="mb-6 space-y-4">
+                    <div className="flex justify-between items-center space-x-4">
+                      <motion.div
+                        className="flex-1 flex items-center justify-center space-x-2 text-gray-300 bg-gray-800/50 py-2 px-4 rounded-lg border border-gray-700/30"
+                        animate={{ scale: [1, 1.02, 1] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        <ClockIcon className="h-5 w-5 text-primary-400" />
+                        <span>Time: {formatTime(searchTime)}</span>
+                      </motion.div>
+
+                      <motion.div
+                        className="flex-1 flex items-center justify-center space-x-2 text-gray-300 bg-gray-800/50 py-2 px-4 rounded-lg border border-gray-700/30"
+                        animate={{ scale: [1, 1.02, 1] }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          delay: 0.3,
+                        }}
+                      >
+                        <FireIcon className="h-5 w-5 text-accent-400" />
+                        <span>ELO: {user?.rating || 1500}</span>
+                      </motion.div>
+                    </div>
+
                     <motion.div
-                      className="inline-flex items-center justify-center space-x-2 text-gray-300 mb-3 bg-gray-800/50 py-2 px-4 rounded-full mx-auto border border-gray-700/30"
-                      animate={{ scale: [1, 1.02, 1] }}
-                      transition={{ duration: 2, repeat: Infinity }}
+                      className="bg-gray-800/30 py-3 px-4 rounded-lg border border-gray-700/20"
+                      animate={{ y: [0, -2, 0] }}
+                      transition={{ duration: 3, repeat: Infinity }}
                     >
-                      <ClockIcon className="h-5 w-5 text-primary-400" />
-                      <span>Search time: {formatTime(searchTime)}</span>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-gray-400 text-sm">
+                          Estimated wait time
+                        </span>
+                        <span className="text-primary-400 text-sm font-medium">
+                          {formatTime(estimatedTime)}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                        <motion.div
+                          className="bg-primary-600 h-1.5"
+                          initial={{ width: "100%" }}
+                          animate={{ width: `${(estimatedTime / 60) * 100}%` }}
+                          transition={{ duration: 0.5 }}
+                        ></motion.div>
+                      </div>
                     </motion.div>
-                    <p className="text-gray-400 bg-gray-800/30 py-3 px-4 rounded-lg border border-gray-700/20">
-                      Looking for players with similar skill level...
-                    </p>
+
+                    <motion.div
+                      className="flex items-center text-sm text-gray-400 bg-gray-800/30 py-3 px-4 rounded-lg border border-gray-700/20"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      {tips[currentTip].icon}
+                      <span>{tips[currentTip].text}</span>
+                    </motion.div>
+
+                    {error ? (
+                      <motion.div
+                        className="bg-red-900/30 text-red-200 p-3 rounded-lg border border-red-800/50 mt-2"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <XMarkIcon className="h-5 w-5 inline-block mr-2 text-red-400" />
+                        {error}
+                      </motion.div>
+                    ) : (
+                      <div className="flex justify-center space-x-2 mt-2">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary-900 text-primary-200 border border-primary-700">
+                          {isRanked ? (
+                            <>
+                              <TrophyIcon className="h-3 w-3 mr-1" />
+                              Ranked Mode
+                            </>
+                          ) : (
+                            <>
+                              <UserGroupIcon className="h-3 w-3 mr-1" />
+                              Unranked Mode
+                            </>
+                          )}
+                        </span>
+
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-800 text-gray-300 border border-gray-700">
+                          <SparklesIcon className="h-3 w-3 mr-1 text-yellow-400" />
+                          Hectoc Puzzle
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-8">
@@ -203,8 +338,10 @@ const DuelMatchmakingDark = ({ onCancel, isOpen }: DuelMatchmakingProps) => {
                       variant="ghost"
                       onClick={onCancel}
                       fullWidth
-                      className="border border-gray-700/50 hover:bg-gray-800/70 transition-all duration-300"
-                      icon={<XMarkIcon className="h-5 w-5 mr-2" />}
+                      className="border border-gray-700/50 hover:bg-gray-800/70 transition-all duration-300 group"
+                      icon={
+                        <XMarkIcon className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
+                      }
                     >
                       Cancel Search
                     </DarkButton>
@@ -225,7 +362,9 @@ const DuelMatchmakingDark = ({ onCancel, isOpen }: DuelMatchmakingProps) => {
                         animate={{ y: [0, -3, 0] }}
                         transition={{ duration: 2, repeat: Infinity }}
                       >
-                        <span className="text-lg">You</span>
+                        <span className="text-lg">
+                          {user?.username?.charAt(0) || "Y"}
+                        </span>
                         <motion.div
                           className="absolute -top-1 -right-1 bg-green-500 rounded-full p-1 border border-gray-800"
                           animate={{ scale: [1, 1.2, 1] }}
@@ -234,10 +373,12 @@ const DuelMatchmakingDark = ({ onCancel, isOpen }: DuelMatchmakingProps) => {
                           <TrophyIcon className="h-3 w-3 text-white" />
                         </motion.div>
                       </motion.div>
-                      <div className="font-medium text-white text-lg">You</div>
+                      <div className="font-medium text-white text-lg">
+                        {user?.username || "You"}
+                      </div>
                       <div className="text-sm text-gray-400 flex items-center justify-center mt-1">
                         <FireIcon className="h-4 w-4 mr-1 text-primary-400" />
-                        <span>1800</span>
+                        <span>{user?.rating || 1500}</span>
                       </div>
                     </motion.div>
 
@@ -273,15 +414,15 @@ const DuelMatchmakingDark = ({ onCancel, isOpen }: DuelMatchmakingProps) => {
                           delay: 0.5,
                         }}
                       >
-                        {opponent?.username.charAt(0)}
+                        {opponent?.username?.charAt(0) || "O"}
                       </motion.div>
                       <div className="font-medium text-white text-lg">
-                        {opponent?.username}
+                        {opponent?.username || "Opponent"}
                       </div>
                       <div className="text-sm text-gray-400 flex items-center justify-center mt-1">
                         <FireIcon className="h-4 w-4 mr-1 text-accent-400" />
                         <NumberCounter
-                          value={opponent?.rating || 0}
+                          value={opponent?.rating || 1500}
                           duration={1}
                         />
                       </div>

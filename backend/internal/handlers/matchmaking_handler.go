@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"bytes"
+	"io"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -31,18 +34,27 @@ func (h *MatchmakingHandler) JoinQueue(c *gin.Context) {
 		return
 	}
 
+	// Log the raw request body
+	bodyBytes, _ := io.ReadAll(c.Request.Body)
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	log.Printf("Raw request body: %s", string(bodyBytes))
+
 	// Parse game type from request
 	var input struct {
 		GameType string `json:"game_type" binding:"required"`
 		Ranked   bool   `json:"ranked"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
+		log.Printf("Error binding JSON: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "Invalid input",
+			"message": "Invalid input: " + err.Error(),
 		})
 		return
 	}
+
+	// Log the parsed input
+	log.Printf("Parsed input: %+v", input)
 
 	// Join queue
 	err := h.matchmakingService.JoinQueue(userID.(string), input.GameType, input.Ranked)
