@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
@@ -11,6 +12,7 @@ import (
 	"github.com/hectoclash/internal/handlers"
 	"github.com/hectoclash/internal/matchmaking"
 	"github.com/hectoclash/internal/middleware"
+	"github.com/hectoclash/internal/practice"
 	"github.com/hectoclash/internal/puzzle"
 	"github.com/hectoclash/internal/repository"
 	"github.com/hectoclash/internal/routes"
@@ -70,6 +72,9 @@ func main() {
 	// Initialize game service
 	gameService := game.NewService(gameRepo, userRepo, puzzleService, eventService)
 
+	// Initialize practice service
+	practiceService := practice.NewService(gameRepo, userRepo, puzzleService, eventService)
+
 	// Initialize matchmaking service
 	matchmakingService := matchmaking.NewService(redisClient, userRepo, gameService, wsHub)
 	go matchmakingService.Start()
@@ -86,6 +91,18 @@ func main() {
 	puzzleHandler := handlers.NewPuzzleHandler(puzzleService, puzzleRepo, userRepo)
 	wsHandler := websocket.NewHandler(wsHub)
 	matchmakingHandler := handlers.NewMatchmakingHandler(matchmakingService)
+
+	// Initialize practice handler
+	practiceHandler := websocket.NewPracticeHandler(wsHub, practiceService)
+
+	// Start a goroutine to clean up inactive practice sessions
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			practiceHandler.CleanupInactiveSessions()
+		}
+	}()
 
 	// Setup routes
 	routes.SetupAuthRoutes(router, authHandler, authMiddleware)

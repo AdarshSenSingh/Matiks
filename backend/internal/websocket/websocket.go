@@ -47,6 +47,13 @@ const (
 	MessageTypePong          MessageType = "pong"
 	MessageTypeJoinQueue     MessageType = "join_queue"
 	MessageTypeLeaveQueue    MessageType = "leave_queue"
+
+	// Practice mode message types
+	MessageTypePracticeStart   MessageType = "practice_start"
+	MessageTypePracticeEnd     MessageType = "practice_end"
+	MessageTypePracticeNextPuzzle MessageType = "practice_next_puzzle"
+	MessageTypePracticeSubmitSolution MessageType = "practice_submit_solution"
+	MessageTypePracticeResult  MessageType = "practice_result"
 )
 
 // Message represents a WebSocket message
@@ -117,6 +124,48 @@ type JoinQueuePayload struct {
 // LeaveQueuePayload represents the payload for a leave queue message
 type LeaveQueuePayload struct {
 	GameType string `json:"game_type,omitempty"`
+}
+
+// PracticeStartPayload represents the payload for starting a practice session
+type PracticeStartPayload struct {
+	TimedMode bool `json:"timed_mode"`
+	StartELO  int  `json:"start_elo,omitempty"`
+}
+
+// PracticeEndPayload represents the payload for ending a practice session
+type PracticeEndPayload struct {
+	SessionID string `json:"session_id"`
+	Reason    string `json:"reason,omitempty"`
+}
+
+// PracticeNextPuzzlePayload represents the payload for a new puzzle in practice mode
+type PracticeNextPuzzlePayload struct {
+	SessionID     string `json:"session_id"`
+	Puzzle        string `json:"puzzle"`
+	Difficulty    int    `json:"difficulty"`
+	CurrentELO    int    `json:"current_elo"`
+	PuzzlesSolved int    `json:"puzzles_solved"`
+	TimeLimit     int    `json:"time_limit,omitempty"` // in seconds, only for timed mode
+}
+
+// PracticeSubmitSolutionPayload represents the payload for submitting a solution in practice mode
+type PracticeSubmitSolutionPayload struct {
+	SessionID string `json:"session_id"`
+	Solution  string `json:"solution"`
+}
+
+// PracticeResultPayload represents the payload for a practice result
+type PracticeResultPayload struct {
+	SessionID     string `json:"session_id"`
+	IsCorrect     bool   `json:"is_correct"`
+	Score         int    `json:"score,omitempty"`
+	RatingChange  int    `json:"rating_change,omitempty"`
+	CurrentELO    int    `json:"current_elo"`
+	PuzzlesSolved int    `json:"puzzles_solved"`
+	NextPuzzle    string `json:"next_puzzle,omitempty"`
+	NextDifficulty int   `json:"next_difficulty,omitempty"`
+	TimeLimit     int    `json:"time_limit,omitempty"` // in seconds, only for timed mode
+	Status        string `json:"status"` // "active", "completed", "failed"
 }
 
 // MatchmakingService defines the interface for matchmaking operations
@@ -334,6 +383,15 @@ func parseMessage(data []byte) (*Message, error) {
 	return &msg, nil
 }
 
+// Helper function to get the keys of the message handlers map
+func getMessageHandlerKeys(handlers map[MessageType]func(*Client, *Message)) []string {
+	keys := make([]string, 0, len(handlers))
+	for k := range handlers {
+		keys = append(keys, string(k))
+	}
+	return keys
+}
+
 // processMessage processes an incoming message
 func (h *Hub) processMessage(client *Client, data []byte) {
 	// Parse the message
@@ -353,12 +411,17 @@ func (h *Hub) processMessage(client *Client, data []byte) {
 		msg.Timestamp = time.Now().UnixNano() / int64(time.Millisecond)
 	}
 
+	// Log the message
+	log.Printf("Processing message: type=%s, userID=%s", msg.Type, msg.UserID)
+
 	// Handle the message based on its type
-	h.mu.Lock()
+	h.mu.RLock()
+	log.Printf("Registered message handlers: %v", getMessageHandlerKeys(h.messageHandlers))
 	handler, ok := h.messageHandlers[msg.Type]
-	h.mu.Unlock()
+	h.mu.RUnlock()
 
 	if ok {
+		log.Printf("Found handler for message type: %s", msg.Type)
 		handler(client, msg)
 	} else {
 		log.Printf("No handler for message type: %s", msg.Type)

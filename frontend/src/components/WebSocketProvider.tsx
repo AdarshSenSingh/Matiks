@@ -8,6 +8,7 @@ import React, {
 import { useAuth } from "../hooks/useAuth";
 
 interface WebSocketContextType {
+  socket: WebSocket | null;
   sendMessage: (message: any) => void;
   lastMessage: any;
   readyState: number;
@@ -99,6 +100,15 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
           window.dispatchEvent(
             new CustomEvent("error_message", { detail: data.payload })
           );
+        } else if (
+          data.type === "practice_start" ||
+          data.type === "practice_end" ||
+          data.type === "practice_next_puzzle" ||
+          data.type === "practice_submit_solution" ||
+          data.type === "practice_result"
+        ) {
+          // Practice mode messages - these are handled by the usePracticeWebSocket hook
+          console.log("Practice mode message received:", data);
         }
 
         setLastMessage(data);
@@ -141,6 +151,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
   return (
     <WebSocketContext.Provider
       value={{
+        socket,
         sendMessage,
         lastMessage,
         readyState,
